@@ -1,4 +1,4 @@
-baseURL = "https://bdathe-lb.github.io/"
+baseURL = "https://www.bdathe.wiki/"
 title = "bdathe@home"
 theme = "hugo-theme-console"
 languageCode = "zh-cn"
