@@ -1,0 +1,28 @@
+baseURL = "https://bdathe-lb.github.io/"
+title = "bdathe@home"
+theme = "hugo-theme-console"
+languageCode = "zh-cn"
+
+[params]
+  animateStyle = "animate-fade-up"
+
+[[params.navlinks]]
+  name = "about/"
+  url = "/about/"
+
+[[params.navlinks]]
+  name = "posts/"
+  url = "/posts/"
+
+[[params.navlinks]]
+  name = "photos/"
+  url = "/photos/"
+
+# 确保 Hugo 认识 AVIF 格式
+[mediaTypes]
+  [mediaTypes."image/avif"]
+    suffixes = ["avif"]
+
+[outputFormats]
+  [outputFormats.AVIF]
+    mediaType = "image/avif"
