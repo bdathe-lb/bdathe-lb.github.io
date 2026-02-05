@@ -17,12 +17,3 @@ languageCode = "zh-cn"
 [[params.navlinks]]
   name = "photos/"
   url = "/photos/"
-
-# 确保 Hugo 认识 AVIF 格式
-[mediaTypes]
-  [mediaTypes."image/avif"]
-    suffixes = ["avif"]
-
-[outputFormats]
-  [outputFormats.AVIF]
-    mediaType = "image/avif"
