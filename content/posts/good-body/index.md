@@ -9,3 +9,5 @@ summary = "Lately, my body has been letting me down. Back pain, knee injuries, d
 - 03/20：慢性咽炎;
 - 03/25：干眼症;
 - 04/10 - 04/16：腰部一直疼痛，甚至这两天有些影响睡眠，准备明天去检查;
+---
+- 04/17：腰部疼痛有好转，预约了 04/18 晚上 9.20 的腰椎核磁共振，但是今天有右手轻微麻的症状;
