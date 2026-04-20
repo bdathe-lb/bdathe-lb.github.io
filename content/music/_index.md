@@ -7,8 +7,7 @@ Here is where I record the music I love :)
 
 ---
 
-
 | Song | Singer | Style |
-|------|------|------|
-| [Sing Alone Song](/music/sing-alone-song/) | Khalil Fong | R&B / Soul |
-
+|------|--------|-------|
+| [Sing Alone Song](/music/sing-alone-song/) | Khalil Fong | R&B |
+| [Skinny Love](/music/skinny-love/) | Dean Ting | R&B |
