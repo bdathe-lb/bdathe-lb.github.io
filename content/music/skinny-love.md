@@ -1,7 +1,7 @@
 +++
 title = "Skinny Love - Dean Ting"
 date = 2026-04-20
-summary = "An R&B song that feels very \"clean.\" by Dean Ting""
+summary = "An R&B song that feels very \"clean.\" by Dean Ting"
 tags = ["丁世光", "R&B"]
 +++
 
