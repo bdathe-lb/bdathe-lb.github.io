@@ -15,5 +15,9 @@ languageCode = "zh-cn"
   url = "/posts/"
 
 [[params.navlinks]]
+  name = "music/"
+  url = "/music/"
+
+[[params.navlinks]]
   name = "photos/"
   url = "/photos/"
