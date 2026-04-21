@@ -1,0 +1,93 @@
+{{ define "main" }}
+<h1>{{ .Page.Title }}</h1>
+
+{{ .Content }}
+
+<style>
+.music-list {
+    margin-top: 2rem;
+}
+
+.music-item {
+    padding: 1.2rem 0;
+    border-bottom: 1px solid var(--secondary-color);
+}
+
+.music-item:last-child {
+    border-bottom: none;
+}
+
+.music-item .header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.music-item .title {
+    font-size: 1.1rem;
+    color: var(--font-color);
+}
+
+.music-item .artist {
+    color: var(--secondary-color);
+    font-size: 0.9rem;
+}
+
+.music-item .meta {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.music-item .album {
+    color: var(--secondary-color);
+    font-size: 0.85rem;
+}
+
+.music-item .genre {
+    color: var(--primary-color);
+    font-size: 0.8rem;
+}
+
+.music-item .spotify {
+    color: #1DB954;
+    font-size: 0.8rem;
+    text-decoration: none;
+    margin-left: auto;
+}
+
+.music-item .spotify:hover {
+    text-decoration: underline;
+}
+
+.music-item .note {
+    color: var(--secondary-color);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+</style>
+
+<div class="music-list">
+{{ range sort .Pages "Date" "desc" }}
+    <div class="music-item">
+        <div class="header">
+            <span class="title">{{ .Title }}</span>
+            <span class="artist">{{ .Params.artist }}</span>
+        </div>
+        <div class="meta">
+            <span class="album">{{ .Params.album }}</span>
+            <span class="genre">{{ .Params.genre }}</span>
+            {{ with .Params.spotify }}
+            <a href="{{ . }}" class="spotify" target="_blank">▶ Spotify</a>
+            {{ end }}
+        </div>
+        {{ with .Params.summary }}
+        <div class="note">{{ . }}</div>
+        {{ end }}
+    </div>
+{{ end }}
+</div>
+
+{{ end }}
