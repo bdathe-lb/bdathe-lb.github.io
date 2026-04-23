@@ -1,0 +1,31 @@
+{{ define "main" }}
+<h1>{{ .Page.Title }}</h1>
+
+<style>
+.daily-content {
+    margin-top: 2rem;
+    line-height: 1.8;
+}
+
+.daily-content p {
+    margin: 0.8rem 0 1.2rem 0;
+}
+
+.daily-content hr {
+    border: none;
+    border-top: 1px solid var(--secondary-color);
+    opacity: 0.25;
+    margin: 0.5rem 0 1.5rem 0;
+}
+
+.daily-content strong {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+</style>
+
+<div class="daily-content">
+    {{ replace (replace (replace (replace (replace (replace (replace (replace (replace .Content "[sunny]" "☀") "[cloudy]" "☁") "[rainy]" "🌧") "[snowy]" "🌨") "[foggy]" "🌫") "[windy]" "💨") "[stormy]" "⛈") "[partly-cloudy]" "⛅") "[moon]" "🌙" | safeHTML }}
+</div>
+
+{{ end }}

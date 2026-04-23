@@ -5,7 +5,7 @@ artist = "方大同 (Khalil Fong)"
 album = "《橙月》"
 genre = "R&B"
 spotify = "https://open.spotify.com/track/0NnujAWj2iqdppiYDTRYY5?si=ee4af7e1777247a2"
-summary = "第一次听到这首歌是在大二的某个夏天的下午，走去图书馆的路上，听到了这首歌的中文版《为你写的歌》，初听就被副歌的突然加速吸引了，后来又接触到英文版本，后也是这首《Sing Alone Song》，整体上这首小情歌的旋律轻快，词也很直接，很好听，直到现在也很喜欢"
+qqmusic = "https://i.y.qq.com/v8/playsong.html?songid=459213&songtype=0#webchat_redirect" 
+summary = "A sweet little love song with poetic lyrics by Khalil Fong."
 +++
 
-A sweet little love song with poetic lyrics by Khalil Fong.
