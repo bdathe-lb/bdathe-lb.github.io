@@ -1,6 +1,7 @@
 ---
 title: "Daily Log"
 type: "daily"
+date: 2026-04-23
 summary: "Short daily notes and reflections."
 ---
 
