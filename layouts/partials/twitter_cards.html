@@ -1,9 +1,14 @@
 {{- with .Params.image }}
 {{ $image := $.Resources.GetMatch . }}
 {{ with $image }}
+{{ if eq .MediaType.SubType "avif" }}
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="{{ .Permalink }}">
+{{ else }}
 {{ $thumb := .Resize "400x" }}
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:image" content="{{ $thumb.Permalink }}">
+{{ end }}
 {{ end }}
 {{ end }}
 

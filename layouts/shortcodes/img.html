@@ -1,0 +1,11 @@
+{{- $image := .Page.Resources.GetMatch (.Get "src") -}}
+{{- if $image -}}
+  {{- if eq $image.MediaType.SubType "avif" -}}
+    <img src="{{ $image.RelPermalink }}" alt="{{ .Get "alt" }}" loading="lazy" class="img-responsive">
+  {{- else -}}
+    {{- $thumb := $image.Resize (printf "%dx" (or (.Get "width") 800)) -}}
+    <img src="{{ $thumb.RelPermalink }}" alt="{{ .Get "alt" }}" loading="lazy" class="img-responsive">
+  {{- end -}}
+{{- else -}}
+  <img src="{{ .Get "src" }}" alt="{{ .Get "alt" }}" loading="lazy" class="img-responsive">
+{{- end -}}

@@ -1,12 +1,12 @@
 +++
-image = "CloudSea.jpg"
+image = "CloudSea.avif"
 date = "2025-10-19"
 title = "徽州"
 type = "gallery"
 +++
 
-![迎客松](WelcomingPine.jpg)
+{{< img src="WelcomingPine.avif" alt="迎客松" width=1000 >}}
 
-![宏村](Hongcun.jpg)
+{{< img src="Hongcun.avif" alt="宏村" width=1000 >}}
 
 终于在 2025 年爬了人生第一座真正意义上的大山。

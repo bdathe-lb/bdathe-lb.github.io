@@ -32,8 +32,12 @@ along with scenery photos and daily musings.
         <a href="{{ .Permalink }}" title="{{ .Title }}">
         {{ $image := .Page.Resources.GetMatch .Params.image }}
         {{ with $image }}
-          {{ $thumb := .Resize "400x avif" }}
+          {{ if eq .MediaType.SubType "avif" }}
+            <img src="{{ .RelPermalink }}" alt="{{ .Title }}" class="img-responsive">
+          {{ else }}
+            {{ $thumb := .Resize "400x" }}
             <img src="{{ $thumb.RelPermalink }}" alt="{{ .Title }}" class="img-responsive">
+          {{ end }}
         {{end}}
         </a>
     {{ end }}

@@ -13,11 +13,11 @@ Throughout my journey of studying and coding, I realized that knowledge needs to
 
 ### What's here?
 
-* **Wiki**:
-    My long-term knowledge base. I structure and organize the knowledge I encounter during my studies here for easy reference at any time.
-
 * **Posts**:
     Footprints along the timeline. This includes toy projects for practicing coding skills, debugging logs, and some random daily musings.
+
+* **Music**:
+    A collection of songs that resonate with me.
 
 * **Photos**:
     Beyond code, I also love observing the world. Here lies the scenery and life moments captured through my lens.

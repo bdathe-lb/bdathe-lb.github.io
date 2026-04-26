@@ -6,8 +6,12 @@
 {{- with .Params.image }}
 {{ $image := $.Resources.GetMatch . }}
 {{ with $image }}
-  {{ $thumb := .Resize "400x" }}
+  {{ if eq .MediaType.SubType "avif" }}
+<meta property="og:image" content="{{ .Permalink }}">
+  {{ else }}
+    {{ $thumb := .Resize "400x" }}
 <meta property="og:image" content="{{ $thumb.Permalink }}">
+  {{ end }}
 {{ end }}
 {{ end }}
 
