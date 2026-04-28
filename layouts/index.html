@@ -26,22 +26,38 @@ along with scenery photos and daily musings.
 </div>
 
 <h1>Latest photos</h1>
-<div class="image-grid">
-{{ with .Site.GetPage "/photos" }}
-    {{ range first 3 (sort .Pages "Date" "desc")}}
-        <a href="{{ .Permalink }}" title="{{ .Title }}">
-        {{ $image := .Page.Resources.GetMatch .Params.image }}
-        {{ with $image }}
-          {{ if eq .MediaType.SubType "avif" }}
-            <img src="{{ .RelPermalink }}" alt="{{ .Title }}" class="img-responsive">
-          {{ else }}
-            {{ $thumb := .Resize "400x" }}
-            <img src="{{ $thumb.RelPermalink }}" alt="{{ .Title }}" class="img-responsive">
-          {{ end }}
-        {{end}}
+<style>
+.home-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.home-photo-item {
+    overflow: hidden;
+    border-radius: 4px;
+    border: 1px solid var(--secondary-color);
+    display: block;
+}
+.home-photo-item img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease, filter 0.4s ease;
+    filter: brightness(0.9);
+}
+.home-photo-item:hover img {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+</style>
+<div class="home-photo-grid">
+    {{ range first 3 (sort .Site.Data.photos "date" "desc") }}
+        <a href="/photos/" title="{{ .title }} ({{ .date }})" class="home-photo-item">
+            <img src="{{ .image }}" alt="{{ .title }}" loading="lazy">
         </a>
     {{ end }}
-{{ end }}
 </div>
 
 {{ end }}

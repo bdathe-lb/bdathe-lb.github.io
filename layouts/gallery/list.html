@@ -1,21 +1,172 @@
 {{ define "main" }}
 <h1>{{ .Page.Title }}</h1>
+
 {{ .Content }}
-<div class="image-grid">
-    {{ range sort .Pages "Date" "desc" }}
-        {{ if and (isset .Params "image") .Params.image }}
-            <a href="{{ .Permalink }}" title="{{ .Title }}">
-            {{ $image := .Page.Resources.GetMatch .Params.image }}
-            {{ with $image }}
-                {{ if eq .MediaType.SubType "avif" }}
-                    <img src="{{ .RelPermalink }}" alt="{{ .Title }}" class="img-responsive">
-                {{ else }}
-                    {{ $thumb := .Resize "400x" }}
-                    <img src="{{ $thumb.RelPermalink }}" alt="{{ .Title }}" class="img-responsive">
-                {{ end }}
-            {{end}}
-            </a>
+
+<style>
+/* CSS Uniform Grid Layout */
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.photo-item {
+    position: relative;
+    cursor: zoom-in;
+    overflow: hidden;
+    border-radius: 4px;
+    aspect-ratio: 1 / 1; /* Makes all thumbnails perfectly square */
+    border: 1px solid var(--secondary-color);
+}
+
+.photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensures image fills the square without distortion */
+    display: block;
+    transition: transform 0.4s ease, filter 0.4s ease;
+    filter: brightness(0.95);
+}
+
+.photo-item:hover img {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+.photo-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    color: white;
+    padding: 1.5rem 1rem 0.8rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+.photo-item:hover .photo-overlay {
+    opacity: 1;
+}
+.photo-title {
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+}
+.photo-date {
+    font-size: 0.8rem;
+    color: #ddd;
+}
+
+/* Lightbox styles */
+.lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    cursor: zoom-out;
+}
+.lightbox.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+.lightbox img {
+    max-width: 90%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 4px;
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.lightbox.active img {
+    transform: scale(1);
+}
+.lightbox-caption {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    text-align: center;
+    background: rgba(0,0,0,0.6);
+    padding: 0.8rem 1.5rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    max-width: 80%;
+    backdrop-filter: blur(5px);
+}
+</style>
+
+<div class="photo-grid">
+    {{ range sort .Site.Data.photos "date" "desc" }}
+    {{ $imgPath := strings.TrimPrefix "/" .image }}
+    {{ $res := resources.Get $imgPath }}
+    {{ $fullSrc := .image }}
+    {{ $thumbSrc := .image }}
+    {{ if $res }}
+        {{ $fullSrc = $res.RelPermalink }}
+        {{ if and (eq $res.ResourceType "image") (not (strings.HasSuffix (lower $res.RelPermalink) ".avif")) }}
+            {{ $thumb := $res.Fill "500x500 webp q80" }}
+            {{ $thumbSrc = $thumb.RelPermalink }}
+        {{ else }}
+            {{ $thumbSrc = $res.RelPermalink }}
         {{ end }}
     {{ end }}
+    <div class="photo-item" onclick="openLightbox('{{ $fullSrc }}', '{{ .caption }}')">
+        <img src="{{ $thumbSrc }}" alt="{{ .title }}" loading="lazy">
+        <div class="photo-overlay">
+            <div class="photo-title">{{ .title }}</div>
+            <div class="photo-date">{{ .date }}</div>
+        </div>
+    </div>
+    {{ end }}
 </div>
+
+<!-- Native Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="Enlarged view">
+    <div class="lightbox-caption" id="lightbox-caption"></div>
+</div>
+
+<script>
+function openLightbox(src, caption) {
+    const lightbox = document.getElementById('lightbox');
+    const img = document.getElementById('lightbox-img');
+    const cap = document.getElementById('lightbox-caption');
+    
+    img.src = src;
+    if (caption && caption !== 'undefined' && caption !== '<no value>') {
+        cap.innerHTML = caption.replace(/\n/g, '<br>');
+        cap.style.display = 'block';
+    } else {
+        cap.style.display = 'none';
+    }
+    
+    lightbox.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Prevent scrolling
+}
+
+function closeLightbox() {
+    const lightbox = document.getElementById('lightbox');
+    lightbox.classList.remove('active');
+    document.body.style.overflow = 'auto'; // Restore scrolling
+}
+
+// Close on Esc key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
 {{ end }}

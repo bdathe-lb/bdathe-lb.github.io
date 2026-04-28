@@ -1,5 +1,5 @@
 +++
-title = "My body has seen better days."
+title = "My body has seen better days"
 date = 2026-04-16
 summary = "Lately, my body has been letting me down. Back pain, knee injuries, dry eyes—one after another, they just keep coming."
 +++

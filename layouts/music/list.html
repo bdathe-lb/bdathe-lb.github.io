@@ -4,103 +4,196 @@
 {{ .Content }}
 
 <style>
-.music-list {
+.music-grid {
     margin-top: 2rem;
+    display: grid;
+    /* Create a responsive grid: cards will be at least 300px wide, expanding to fill available space */
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
 }
 
-.music-item {
-    padding: 1.2rem 0;
-    border-bottom: 1px solid var(--secondary-color);
-}
-
-.music-item:last-child {
-    border-bottom: none;
-}
-
-.music-item .header {
+.music-card {
+    border: 1px solid var(--secondary-color);
+    padding: 1.2rem;
     display: flex;
-    align-items: baseline;
-    gap: 1rem;
-    margin-bottom: 0.5rem;
+    flex-direction: column;
+    gap: 1.2rem;
+    transition: border-color 0.3s ease;
+    background: transparent;
+    border-radius: 8px;
 }
 
-.music-item .title {
-    font-size: 1.1rem;
+.music-card:hover {
+    border-color: var(--primary-color);
+}
+
+.player-container {
+    width: 100%;
+    background-color: transparent;
+}
+
+.music-card iframe {
+    display: block;
+    width: 100%;
+    border: none;
+    margin: 0;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+html.theme-dark .music-card iframe {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.music-card .note {
+    font-size: 0.9rem;
     color: var(--font-color);
+    line-height: 1.6;
+    font-style: italic;
+    border-left: 2px solid var(--primary-color);
+    padding-left: 0.8rem;
+    flex-grow: 1; /* Pushes the footer to the bottom evenly */
 }
 
-.music-item .artist {
+.music-card .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    border-top: 1px dashed var(--secondary-color);
+    padding-top: 0.8rem;
+}
+
+.music-card .genre {
+    color: var(--secondary-color);
+}
+
+.toggle-player-btn {
+    background: none;
+    border: 1px solid var(--secondary-color);
+    color: var(--secondary-color);
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+.toggle-player-btn:hover {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Fallback for items without a Spotify link */
+.music-card .fallback-header {
+    padding: 0.5rem 0;
+}
+.music-card .fallback-title {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+.music-card .fallback-artist {
     color: var(--secondary-color);
     font-size: 0.9rem;
-}
-
-.music-item .meta {
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.music-item .album {
-    color: var(--secondary-color);
-    font-size: 0.85rem;
-}
-
-.music-item .genre {
-    color: var(--primary-color);
-    font-size: 0.8rem;
-}
-
-.music-item .spotify {
-    color: #1DB954;
-    font-size: 0.8rem;
-    text-decoration: none;
-    margin-left: auto;
-}
-
-.music-item .spotify:hover {
-    text-decoration: underline;
-}
-
-.music-item .qqmusic {
-    color: #12B7F5;
-    font-size: 0.8rem;
-    text-decoration: none;
-}
-
-.music-item .qqmusic:hover {
-    text-decoration: underline;
-}
-
-.music-item .note {
-    color: var(--secondary-color);
-    font-size: 0.85rem;
-    line-height: 1.5;
+    margin-top: 0.3rem;
 }
 </style>
 
-<div class="music-list">
-{{ range sort .Pages "Date" "desc" }}
-    <div class="music-item">
-        <div class="header">
-            <span class="title">{{ .Title }}</span>
-            <span class="artist">{{ .Params.artist }}</span>
-        </div>
-        <div class="meta">
-            <span class="album">{{ .Params.album }}</span>
-            <span class="genre">{{ .Params.genre }}</span>
-            {{ with .Params.spotify }}
-            <a href="{{ . }}" class="spotify" target="_blank">▶ Spotify</a>
+<div class="music-grid">
+{{ range sort .Site.Data.music "date" "desc" }}
+    <div class="music-card">
+        <div class="player-container">
+            {{ if .spotify }}
+                <!-- Dynamically extract Spotify Track ID from URL -->
+                {{ $parts := split .spotify "/" }}
+                {{ $lastPart := index $parts (sub (len $parts) 1) }}
+                {{ $idParts := split $lastPart "?" }}
+                {{ $trackId := index $idParts 0 }}
+                
+                <div class="player spotify-player" style="display: block;">
+                    <!-- Compact Spotify Embed Player -->
+                    <iframe src="https://open.spotify.com/embed/track/{{ $trackId }}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                </div>
             {{ end }}
-            {{ with .Params.qqmusic }}
-            <a href="{{ . }}" class="qqmusic" target="_blank">▶ QQ音乐</a>
+
+            {{ if .qqmusic }}
+                <!-- Dynamically extract QQ Music Song ID from URL -->
+                {{ $parts := split .qqmusic "songid=" }}
+                {{ $afterSongid := index $parts 1 }}
+                {{ $idParts := split $afterSongid "&" }}
+                {{ $hashParts := split (index $idParts 0) "#" }}
+                {{ $songid := index $hashParts 0 }}
+                
+                <div class="player qq-player" style="display: {{ if .spotify }}none{{ else }}block{{ end }};">
+                    <!-- Compact QQ Music Embed Player -->
+                    <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" width="100%" height="66" src="//i.y.qq.com/n2/m/outchain/player/index.html?songid={{ $songid }}&songtype=0" loading="lazy"></iframe>
+                </div>
+            {{ end }}
+
+            {{ if and (not .spotify) (not .qqmusic) }}
+                <div class="fallback-header">
+                    <div class="fallback-title">{{ .title }}</div>
+                    <div class="fallback-artist">{{ .artist }} - {{ .album }}</div>
+                </div>
             {{ end }}
         </div>
-        {{ with .Params.summary }}
-        <div class="note">{{ . }}</div>
+
+        {{ with .summary }}
+        <div class="note">"{{ . }}"</div>
         {{ end }}
+
+        <div class="footer">
+            <span class="genre"># {{ .genre }}</span>
+            <div class="actions">
+                {{ if and .spotify .qqmusic }}
+                <button class="toggle-player-btn" onclick="togglePlayer(this)">切换至 QQ音乐</button>
+                {{ end }}
+            </div>
+        </div>
     </div>
 {{ end }}
 </div>
+
+<script>
+function updateSpotifyTheme(theme) {
+    const themeVal = theme === 'dark' ? '0' : '1';
+    document.querySelectorAll('.spotify-player iframe').forEach(iframe => {
+        const currentSrc = iframe.src;
+        if (currentSrc.includes('theme=')) {
+            const newSrc = currentSrc.replace(/theme=\d/, `theme=${themeVal}`);
+            if (currentSrc !== newSrc) {
+                iframe.src = newSrc;
+            }
+        }
+    });
+}
+
+function togglePlayer(btn) {
+    const card = btn.closest('.music-card');
+    const spotifyPlayer = card.querySelector('.spotify-player');
+    const qqPlayer = card.querySelector('.qq-player');
+    
+    if (spotifyPlayer.style.display !== 'none') {
+        spotifyPlayer.style.display = 'none';
+        qqPlayer.style.display = 'block';
+        btn.textContent = '切换至 Spotify';
+    } else {
+        spotifyPlayer.style.display = 'block';
+        qqPlayer.style.display = 'none';
+        btn.textContent = '切换至 QQ音乐';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial Spotify theme set
+    const currentTheme = document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light';
+    updateSpotifyTheme(currentTheme);
+});
+
+document.addEventListener('themeChanged', (e) => {
+    updateSpotifyTheme(e.detail);
+});
+</script>
 
 {{ end }}

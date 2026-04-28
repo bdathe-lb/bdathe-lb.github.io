@@ -2,10 +2,9 @@
 title = "Music"
 +++
 
-这里记录着我喜欢的音乐 :)
+Here are the songs/music I like :)
 
 > "Music is the refuge of souls."
 
 ---
-
-每一首歌都是某个时刻的回忆。
+Every song is a memory of a certain moment.

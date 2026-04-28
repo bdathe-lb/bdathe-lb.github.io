@@ -15,9 +15,17 @@ languageCode = "zh-cn"
   url = "/posts/"
 
 [[params.navlinks]]
+  name = "daily/"
+  url = "/daily/"
+
+[[params.navlinks]]
   name = "music/"
   url = "/music/"
 
 [[params.navlinks]]
   name = "photos/"
   url = "/photos/"
+
+[[params.navlinks]]
+  name = "rehab/"
+  url = "/rehab/"

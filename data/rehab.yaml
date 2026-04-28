@@ -1,0 +1,13 @@
+- date: "2026-04-28"
+  morning_status: "腰部疼痛感觉微弱"
+  morning_pain_score: 1
+  evening_status: "严格执行了休息策略，眼睛状态不错。"
+  evening_pain_score: 3
+  exercises: 
+    - |
+      中午
+        - 颈椎：斜方肌拉伸 (30s * 3) + 收下颌 (30s * 3)
+        - 腰椎：平板支撑 (1min * 4) + 死虫 (1min * 4) + 桥臀 (1min * 3) + 卷腹 (15 * 3)
+        - 膝盖：直腿抬高 (1min * 1 + 15 * 2) + 抗阻训练 + 热敷膝盖
+  feedback: "收下颌的动作会让后脑勺涨涨的不舒服"
+  note: "久坐腰会不舒服，休息后痛感明显减弱"
