@@ -1,0 +1,55 @@
+{{ define "main" }}
+<h1>{{ .Page.Title }}</h1>
+<br/>
+{{ .Content }}
+
+<style>
+.post-item {
+    margin-bottom: 2.5rem;
+    cursor: pointer;
+}
+.post-item h1 {
+    margin-bottom: 0.5rem;
+    padding-top: 0;
+    transition: transform 0.3s ease;
+}
+.post-item h1 a {
+    transition: color 0.3s ease;
+}
+.post-item:hover h1 {
+    transform: translateX(10px);
+}
+.post-item h1 a:hover,
+.post-item:hover h1 a {
+    color: var(--primary-color) !important;
+    background-color: transparent !important; /* 强制覆盖主题自带的蓝色实心背景 */
+}
+.post-item .summary {
+    color: var(--font-color);
+    line-height: 1.6;
+    transition: opacity 0.3s ease;
+}
+.post-item:hover .summary {
+    opacity: 0.8;
+}
+.post-item .date {
+    transition: color 0.3s ease;
+}
+.post-item:hover .date {
+    color: var(--primary-color);
+}
+</style>
+
+<div class="posts-list">
+{{ range sort .Pages "Date" "desc" }}
+    {{ if not .Params.private }}
+        <div class="post post-item" onclick="window.location.href='{{ .Permalink }}'">
+            <div class="date">{{ .PublishDate.Format "Jan. 2, 2006" }}</div>    
+            <h1><a href="{{ .Permalink }}" title="{{ .Title }}">{{ .Title }}</a></h1>
+            <div class="summary">{{ .Summary }}</div>
+        </div>
+    {{ end }}
+{{ end }}
+</div>
+
+{{ end }}

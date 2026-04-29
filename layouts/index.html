@@ -54,8 +54,19 @@ along with scenery photos and daily musings.
 </style>
 <div class="home-photo-grid">
     {{ range first 3 (sort .Site.Data.photos "date" "desc") }}
+        {{ $imgPath := strings.TrimPrefix "/" .image }}
+        {{ $res := resources.Get $imgPath }}
+        {{ $thumbSrc := .image }}
+        {{ if $res }}
+            {{ if and (eq $res.ResourceType "image") (not (strings.HasSuffix (lower $res.RelPermalink) ".avif")) }}
+                {{ $thumb := $res.Fill "400x300 webp q80" }}
+                {{ $thumbSrc = $thumb.RelPermalink }}
+            {{ else }}
+                {{ $thumbSrc = $res.RelPermalink }}
+            {{ end }}
+        {{ end }}
         <a href="/photos/" title="{{ .title }} ({{ .date }})" class="home-photo-item">
-            <img src="{{ .image }}" alt="{{ .title }}" loading="lazy">
+            <img src="{{ $thumbSrc }}" alt="{{ .title }}" loading="lazy">
         </a>
     {{ end }}
 </div>

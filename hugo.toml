@@ -2,6 +2,12 @@ baseURL = "https://www.bdathe.wiki/"
 title = "bdathe@home"
 theme = "hugo-theme-console"
 languageCode = "zh-cn"
+hasCJKLanguage = true
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
 
 [params]
   animateStyle = "animate-fade-up"
