@@ -1,3 +1,12 @@
+- date: "2026-04-29"
+  morning_status: "无明显感觉, 睡眠状态较好"
+  morning_pain_score: 1
+  evening_status: ""
+  evening_pain_score: 0
+  exercises: 
+  feedback: ""
+  note: ""
+
 - date: "2026-04-28"
   morning_status: "腰部疼痛感觉微弱"
   morning_pain_score: 1
