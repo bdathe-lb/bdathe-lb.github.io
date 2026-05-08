@@ -32,6 +32,3 @@ hasCJKLanguage = true
   name = "photos/"
   url = "/photos/"
 
-[[params.navlinks]]
-  name = "rehab/"
-  url = "/rehab/"
