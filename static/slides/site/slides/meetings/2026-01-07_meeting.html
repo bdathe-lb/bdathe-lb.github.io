@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+        
+            <link rel="icon" href="../../assets/icon/cat.ico">
+        
+
+        <link rel="stylesheet" href="../../mkslides-assets/reveal-js/dist/reveal.css" />
+
+        
+            <link rel="stylesheet" href="../../theme/slides.css" />
+        
+        
+            <link rel="stylesheet" href="../../mkslides-assets/highlight-js-themes/atom-one-light.css" />
+        
+
+        
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+                <section data-markdown
+                
+                    data-separator="^\s*---\s*$"
+                
+                    data-separator-vertical="^\s*-v-\s*$"
+                
+                    data-separator-notes="^Notes?:"
+                
+                    data-charset="utf-8"
+                
+                >
+                    <!-- The markdown must be placed to the whole left to prevent indentation issues like https://github.com/MartenBE/mkslides/issues/52 -->
+                    <textarea data-template>
+# 收敛性分析
+
+<hr>
+
+<div class="avatar-container">
+</div>
+
+---
+
+## Part 1. 状态空间定义
+
+-v-
+
+### 状态机建模
+将复杂的异步分布式交互离散化，通过证明状态流转的单向性来论证收敛，将任意任务 $T_k \in \mathcal{T}$ 的生命周期建模为一个有限状态机，状态集合定义为：
+$\mathbb{S} = \lbrace S_{F}, S_{A}, S_{L}, S_{C} \rbrace$
+
+- $S_{F}$：任务处于未分配状态 ($\lambda_k = \infty$)
+- $S_{A}$：任务处于暂定分配状态 ($0 \le \lambda_k \lt \infty$)，属于某个智能体的计划列表，但可能会因竞拍或优化发生变化
+- $S_{L}$：任务处于物理锁定状态 ($\lambda_k = -1.0$)，智能体正在前往或执行该任务
+- $S_{C}$：任务处于已完成状态 ($\lambda_k = 0$)
+
+> $\text{F(ree), A(ssigned), L(ocked), C(ompleted)}$
+
+-v-
+### 状态转移
+1. $S_F \to S_A$ 
+    - 触发事件：Tiered Greedy Inclusion ($E_1$)
+    - 数学条件：$\exists a_i \in \mathcal{A}, \text{ s.t. } Feasible(a_i, T_k) \land T_k \notin BlackList \land (MarginalCost_i(T_k) \lt \infty)$
+
+-v-
+
+2. $S_A \to S_A$
+    - 竞争性所有权转移：邻居 $a_j$ 对任务 $T_k$ 的报价比当前拥有者 $a_i$ 更低，所有权从 $i$ 变更为 $j$，全局状态仍为 $S_A$
+        - 触发事件：Consensus Update ($E_2$)
+        - 数学条件：$J_{j}(T_k) \le J_{i}(T_k) - \epsilon$
+    - 轨迹优化：当前拥有者 $a_i$ 发现了一条更优的执行顺序，使得 $J_i(T_k)$ 减小，状态仍为 $S_A$
+        - 触发事件：Pinned 2-Opt ($E_3$)
+        - 数学条件：$J_i(T_k)^{new} \lt J_i(T_k)^{old}$
+
+-v-
+
+3. $S_A \to S_L$
+    - 触发事件：Hard Lock Activation ($E_4$)
+    - 数学条件：$(T_k = \mathcal{L}_i[0]) \land (Status(a_i) = \text{Executing})$
+
+智能体 $a_i$ 完成了前序任务，任务 $T_k$ 移动到了列表 $\mathcal{L}_i$ 的头部 (Index 0)，且智能体开始物理前往
+
+
+-v-
+
+4. $S_A \to S_F$
+    - 违反约束：由于后续加入的任务或路径调整，导致 $T_k$ 的预计到达时间超过了 Deadline，任务被移除，并加入 Blacklist
+        - 触发事件：Passive Pruning ($E_5$)
+        - 数学条件：$Arrival(T_k) \gt Deadline(T_k) \Rightarrow Cost = \infty$
+    - 拥塞规避：智能体 $a_i$ 检测到周围有高优先级的邻居（ID更小），判定处于拥塞区域，为了缓解拥塞，主动释放尚未执行的任务回 $S_F$，并加入 Blacklist
+        - 触发事件：Active Congestion Drop ($E_6$)
+        - 数学条件：$\exists a_j, Dist(i,j) < R_{cong} \land ID_j \lt ID_i$
+    - 所有权丢失：任务被邻居抢走，由于任务信息长时间没更新，本地会将任务退回 $S_F$ 状态重新争取
+        - 触发事件: Stale Info Reset ($E_7$)
+
+-v-
+
+5. $S_L \to S_C$
+    - 触发事件： Physical Completion ($E_8$)
+    - 数学条件：$\text{Time at task} \gt Duration(T_k)$
+
+智能体在任务位置执行完任务，任务从所有列表中永久移除，Significance 设为 0
+
+-v-
+
+<section class="demo-with-title">
+  <iframe src="webs/fsm.html"></iframe>
+</section>
+---
+
+## Part 2. 引入引理
+
+-v-
+
+### 引理 1
+
+$Lemma \ 1$：
+
+在准静态环境下，对于任意处于 $S_A$ 状态的任务 $T_k$，其分配代价序列 $\lbrace  J_k(t_0), J_k(t_1), \dots\rbrace$ 是单调递减的，且在有限步内收敛
+
+$proof$：
+
+由于代价函数 $J_k(t) \ge 0$ ，且每次状态变更都伴随着代价的严格下降，根据单调有界收敛定理，该序列必然在有限次迭代后停止变化。系统不会在 $S_A$ 内部发生死循环
+
+-v-
+
+### 引理 2
+$Lemma \ 2$：
+
+状态流转路径 $S_L \to S_C$ 是确定性的，且不存在从 $S_L$ 回退到 $S_A$ 或 $S_F$ 的路径
+
+$proof$：
+
+当智能体 $a_i$ 开始物理执行 $T_k$ 时，算法强制设定 $J_k(t) = −1.0$，智能体 $a_i$ 始终拥有 $T_k$ 的归属权，随着仿真时间 $t$ 的增加，智能体在任务点的停留时间 $t_{stay}$ 单调增加。当 $t_{stay} \ge Durationk$ 时，状态确定性地转为 $S_C$
+
+-v-
+
+### 引理 3
+
+$Lemma \ 3$：
+
+系统中不存在零时间延迟的循环流转 $S_A \to S_F \to S_A$，任何此类震荡都伴随着有限的时间延迟$\ \Delta t$ 
+
+$proof$：
+
+当任务因约束冲突或拥塞被移除时，它会被加入 $\text{BlackList}$，强制进入一个有限时间 $\Delta t$ 的“不可见”状态，这引入了物理时间延迟 $\Delta t$，确保了系统状态随物理时间的流逝而不断演进，而非陷入瞬时震荡
+
+-v-
+
+### 引理 4
+$Lemma \ 4$：
+
+若系统中存在处于 $S_F$ 的可行任务 $T_k$，且存在有剩余能力的智能体 $a_i$，则 $T_k$ 最终会被移入 $S_A$
+
+$proof$：
+
+根据 $Lemma \ 2$，所有正在执行的任务最终都会完成并从列表中移除。这保证了智能体 $a_i$ 的任务列表长度 $∣\mathcal{L}_i∣$ 会周期性地减小，从而释放出空闲槽位，导致$|\mathcal{L}_i| \lt MaxTasks$，于是算法遍历所有 $S_F$ 任务。如果 $T_k$ 物理可行，则其边际成本 必然 $MarginalCost \lt \infty$，于是任务$T_k$ 状态转为 $S_A$
+
+---
+
+## Part 3. 全局收敛性
+
+-v-
+
+### 全局收敛性定理
+
+对于任意初始状态，算法保证所有物理可行的任务在有限时间内进入 $S_C$ 状态，且算法终止
+
+-v-
+
+### 证明
+假设存在一个可行任务 $T_t$ 永远无法到达 $S_C$
+
+1. 根据 $Lemma \ 2$，如果 $T_t$ 曾进入 $S_L$，它必然完成，所以 $T_t$ 只能滞留在 $S_F$ 或 $S_A$ 中
+2. 根据 $Lemma \ 1$，$S_A$ 内部的优化是有限的，因此 $T_t$ 的状态转移只可能出现这三种情况：
+    - $S_F$ 和 $S_A$ 之间震荡
+    - 长期停留在$S_F$ 状态
+    - 长期停留在$S_A$ 状态，但未被执行
+
+-v-
+
+### 证明
+驳斥长期停留在 $S_A$ 状态，未被执行
+
+ - 算法中，智能体严格执行其路径列表的第一个任务
+ - 随着前序任务不断完成（由 $Lemma \ 2$ 保证），$T_t$ 最终会移动到列表头部
+ - 一旦到达头部，触发 Hard Lock，进入 $S_L$，最终进入 $S_C$，这与假设矛盾
+
+-v-
+
+### 证明
+驳斥长期停留在 $S_F$ 状态或者震荡状态
+
+- 任务最终一定会进入 $S_A$ 状态（由 $Lemma \ 4$ 保证）
+- 即使发生震荡（进入 $S_A$ 又退回 $S_F$），但每次震荡都伴随物理时间的流逝（由 $Lemma \ 3$ 保证） 
+- 然而，系统中的任务总集，$\mathcal{T}_t$是有限的，已完成的任务集$\mathcal{T}_c$的数量是随时间单调非减的 （由 $Lemma \ 2$ 保证），活跃任务集 $\mathcal{T}_a = \mathcal{T}_t \backslash \mathcal{T}_c$ 随时间 $t \to \infty$ 规模不断减少，当减少到只包含目标任务 $T_t$时，该任务的所有权最终会转移到一个最优的智能体（由 $Lemma \ 1$ 保证），最终进入 $S_C$，这与假设矛盾
+                    </textarea>
+                </section>
+            </div>
+        </div>
+        <script src="../../mkslides-assets/reveal-js/dist/reveal.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/highlight/highlight.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/markdown/markdown.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/math/math.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/notes/notes.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/search/search.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/zoom/zoom.js"></script>
+
+        
+
+        <script>
+            Reveal.initialize({
+                
+                    
+                        history: true,
+                    
+                        slideNumber: "c/t",
+                    
+                        height: 720,
+                    
+                        width: 960,
+                    
+                        transition: "fade",
+                    
+                        transitionSpeed: "fast",
+                    
+                        center: false,
+                    
+                
+                plugins: [
+                    RevealMarkdown, // Must come before the other plugins so they can hook into the generated HTML.
+                    RevealHighlight,
+                    RevealMath.KaTeX,
+                    RevealNotes,
+                    RevealSearch,
+                    RevealZoom,
+
+                    
+                ],
+            });
+        </script>
+    </body>
+</html>

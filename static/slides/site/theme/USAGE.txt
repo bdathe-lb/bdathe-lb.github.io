@@ -1,0 +1,50 @@
+Slides Theme Notes
+==================
+
+这个主题保留白底、蓝色标题和学术汇报风格，额外提供一些轻量 class，便于把复杂内容拆成稳定版式。
+
+常用组件
+--------
+
+<div class="takeaway">一句话结论或本页核心观点。</div>
+
+<div class="definition">
+  <strong>定义：</strong>用于放符号定义、状态定义或问题定义。
+</div>
+
+<div class="theorem">
+  <strong>引理：</strong>用于放定理、引理和命题。
+</div>
+
+<div class="proof">
+  <strong>证明思路：</strong>用于放证明步骤和推导逻辑。
+</div>
+
+<div class="warning">用于失败原因、风险、瓶颈。</div>
+<div class="result">用于实验结果、结论、收敛结果。</div>
+
+版式工具
+--------
+
+<div class="two-col">
+  <div>左列内容</div>
+  <div>右列内容</div>
+</div>
+
+<div class="two-col split-40-60">
+  <div>较窄的左列</div>
+  <div>较宽的右列</div>
+</div>
+
+<div class="figure-wide">
+  <img src="./images/example.png">
+  <div class="figure-caption">图注</div>
+</div>
+
+内容建议
+--------
+
+- 普通内容页：标题 + 一句 takeaway + 3 到 5 个 bullet。
+- 算法页：代码块配合 two-col，另一列解释输入、过程和效果。
+- 证明页：用 theorem 放命题，用 proof 放推导步骤。
+- 实验页：用 result 放最重要的数字或结论。

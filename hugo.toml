@@ -21,8 +21,12 @@ hasCJKLanguage = true
   url = "/posts/"
 
 [[params.navlinks]]
-  name = "daily/"
-  url = "/daily/"
+  name = "slides/"
+  url = "/slides/"
+
+[[params.navlinks]]
+  name = "poems/"
+  url = "/poems/"
 
 [[params.navlinks]]
   name = "music/"
@@ -31,4 +35,3 @@ hasCJKLanguage = true
 [[params.navlinks]]
   name = "photos/"
   url = "/photos/"
-

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+        
+            <link rel="icon" href="../../assets/icon/cat.ico">
+        
+
+        <link rel="stylesheet" href="../../mkslides-assets/reveal-js/dist/reveal.css" />
+
+        
+            <link rel="stylesheet" href="../../theme/slides.css" />
+        
+        
+            <link rel="stylesheet" href="../../mkslides-assets/highlight-js-themes/atom-one-light.css" />
+        
+
+        
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+                <section data-markdown
+                
+                    data-separator="^\s*---\s*$"
+                
+                    data-separator-vertical="^\s*-v-\s*$"
+                
+                    data-separator-notes="^Notes?:"
+                
+                    data-charset="utf-8"
+                
+                >
+                    <!-- The markdown must be placed to the whole left to prevent indentation issues like https://github.com/MartenBE/mkslides/issues/52 -->
+                    <textarea data-template>
+# Multi-Objective Distributed Task Allocation for UAV swarms with Limited Interactions
+Kai Ling，Kun Zhu
+
+---
+## Part 1. 预备工作
+
+-v-
+
+### 集中式架构 Vs. 分布式架构
+
+- 集中式架构
+	- 高计算资源
+	- 通信负担大
+	- 单点故障
+- 分布式架构
+	- 鲁棒性
+	- 可扩展性
+
+>开发高效的分布式算法并管理复杂的通信网络具有挑战性
+
+-v-
+
+### 基于拍卖机制的算法
+- CBBA：一种典型的分布式任务分配算法。每个 UAV 根据收益独立构建任务捆绑，然后通过与邻居进行信息一致性交互来解决冲突，最终在有限迭代内收敛到无冲突的近似最优分配方案
+- CBBA-PR：适应于动态环境下的任务分配，当新任务加入进来时，可以只进行局部再分配，而不需要像 CBBA 一样进行全局重置再分配
+- CF-CBBA：通过将问题进行划分，并且对划分的问题进行并行处理从而减少了通信负担
+- Team-CBBA：将无人机划分为一个个 Team，每个 Team 为 Team 内的所有无人机分配任务，各个 Team 之间通过“outer-loop”进行协调
+- CBBA with Relays：共识阶段利用已有信息预测未来拓扑，在需要的地方生成“中继任务”，让部分 UAV 临时充当中继，从而保证分布式协同的通信连通性
+
+-v-
+
+### PI 系列算法
+- PI-MinAvg：通过迭代方式最小化 UAV 添加任务时对系统整体性能的平均负面影响
+- PI-MaxAss：在存在严格时间约束的情况下，目标是最大化 UAV 系统中任务的分配数量，保证尽可能多的任务被完成
+- PI-Apex：结合了 PI-MinAvg 与 PI-MaxAss 的思想，在最小化性能影响和最大化任务数量之间寻求平衡，是 PI 系列中的改进型算法，性能最接近集中式最优方案
+
+> PI算法在CBBA的基础上实现了显著改进，此后，用于分布式任务分配的拍卖算法主要采用 PI 或其改进版本
+
+-v-
+
+### 网络简化算法
+- **目标**：在一个无人机通信网络中，尽可能多地删除不必要的通信链路，以降低数据传输量、减少干扰并节省能量。
+- **关键**：研究表明，通信网络中 “闭合三角形”（即三个节点两两相连形成的环）的数量与分布式算法的通信效率密切相关。减少闭合三角形的数量，可以有效提升通信效率
+
+-v-
+
+### 网络简化算法
+- BM 算法
+```python
+def BM(Ginit):
+  GBM = Ginit
+  for eij in GBM:
+    if IsTri(GBM,ai,aj): GMB.remove(eij)
+  return GMB
+```
+- RP 算法
+```python
+def RP(Ginit, β):
+  GRP = Ginit
+  for ai,aj,ak in GRP:
+    if GRP(ij) ^ GRP(ij) ^ GRP(ij):
+      {a,b} = argmax{dij, djk, dik} && s = dij + djk + dik
+      if dab > β*(s - dab): GRP.remove(eab)
+  return GRP
+```
+
+---
+
+## Part 2. 数学建模
+
+-v-
+
+### 定义
+
+- $U = [u_1, \dots, u_n]^{T}$：异构无人机集合
+- $T = [t_1, \dots, t_m]^{T}$：幸存者集合
+- $\left \langle loc(u_i),v_i \right \rangle$：描述无人机 $u_i \in U$
+	- $loc(u_i) = (x_i, y_i, z_i)$：表示 $u_i$ 的最初位置坐标
+	- $v_i$：无人机的巡航速度
+- $\left \langle loc(t_j), D_j \right \rangle$：描述幸存者 $t_j \in T$
+	- $loc(t_j) = (x_j, y_j, z_j)$：表示 $t_j$ 的位置坐标
+	- $D_j$：表示营救 $t_j$ 所需要的时间
+- $P = [p_1, \dots, p_n]^{T}$：任务集合
+	- $p_i$：表示无人机 $u_i$ 的任务集合
+
+-v-
+
+### 目标
+
+$$
+J = \displaystyle \min_{p_i}C \left ( \max_{p_i}N \right )
+$$
+
+$$
+C = \sum_{i=1}^{n}\sum_{j=1}^{|p_i|}c_{i,j}(p_i) 
+$$
+
+$$
+N = \sum_{i=1}^{n}|p_i|
+$$
+
+$c_{i,j}$：表示无人机 $u_i$ 到达幸存者 $t_j$ 位置时所花费的时间（或者说是幸存者 $t_j$ 等待无人机 $u_i$ 救援的时间）
+
+-v-
+
+### 约束
+- $|p_i| \le N_i, \forall{i} \in \{1, \dots, n\}$，约束了每个无人机最大可执行的任务数量
+- $p_i \displaystyle \bigcap p_j = \varnothing, \forall{i \neq j} \in \{ 1, \dots, n \}$，约束了每个任务只能被一个无人机执行
+- $\displaystyle \bigcup_{i=1}^{n} \subseteq T$，约束了无人机执行的任务只能来自集合 $T$
+- $c_{i,j}(p_i) \le s_{p_i(j)}, \forall{i} \in \{ 1, \dots, n \}, \forall{j} \in {1, \dots, |p_i|}$，约束了无人机需要在幸存者截止时间之前执行营救该幸存者的任务
+- $h_{i,k} \in \{ 0,1 \}, \forall{h_{i,k}} \in \mathbf{H}$，约束了异构无人机所能执行的任务
+- $h_{i, p_{i}(j)} = 1, \forall{i} \in \{1, \dots, n\}, \forall{j} \in \{1, \dots, |p_i|\}$，约束了无人机执行任务列表中的任务必须是自己所能执行的
+
+---
+## Part 3. RCFPI-Apex
+
+-v-
+
+### 无人机通信影响因素
+
+论文以 PI 算法为背景讨论了无人机通信过程中的影响因素，从循环的角度可以将 PI 算法看作两个循环：
+
+- 内循环：算法的共识阶段，影响通信的因素主要是网络的连接数量，也就是节点的度数
+- 外循环：整个算法的迭代过程，每一次外循环都会引起一次内循环。算法的迭代次数主要和分配中的任务冲突有关
+
+-v-
+
+### RCFPI-Apex 组件
+
+RCFPI-APEX 算法包含了三个组件：
+
+- 任务冲突解决算法：进行无冲突任务调度
+- 组策略：选择 UVAs 的一个子集进行通信
+- 网络简化算法：简化网络拓扑
+ 
+---
+## Part 4. 实验模拟
+
+-v-
+
+### 场景搭建
+
+- UVAs：
+	- 运送药物，巡航速度：$50\text{m/s}$
+	- 运送食物，巡航速度：$30\text{m/s}$
+- 幸存者：
+	- 需要药物，救援需要花费：$300\text{s}$
+	- 需要食物，救援需要花费：$350\text{s}$
+- 3D 场景：$10\text{km} \times 10\text{km} \times 1\text{km}$
+	- UVAs & 幸存者的位置服从随机分布在 $10\text{km} \times 10\text{km} \times 1\text{km}$ 内
+- 救援时间：$[0, 2000\text{s}]$
+	- 幸存者的救援截止时间随机分布在 $[0,2000\text{s}]$ 内
+
+-v-
+### 实验设置
+- 设置了 $4 \times 6 = 24$ 组不同的实验情况，每组实验做 1000 次实验
+	- $p \in \{2,3,4,5\}, \quad p = \dfrac{\text{number of tasks}}{\text{number of UAVs}}$
+	- $n \in \{6,8,10,12,14,16\}, \quad n \text{ denotes the number of UAVs}$
+- 初始的网络拓扑随机生成，但是要严格保证连通性
+
+-v-
+
+### 评价指标
+- 外层循环次数：算法外层迭代次数（与任务冲突、任务删除/添加相关）
+- 内层循环通信交互数：内部共识阶段的无人机间通信次数，受网络拓扑影响
+- 被分配的任务数量
+- 完成任务的等待时间（针对已完成任务）
+
+-v-
+
+### RCFPI-Apex 与 PI 系列算法的比较
+- 总的通信次数相比于其他 PI 系列算法降低了 $65.7\% \sim 80\%$
+- 任务分配数量和其他 PI 系列算法一致
+- 任务等待时间相比与其他 PI 系列算法会带来不超过 $8\%$ 的提升
+
+-v-
+
+### 消融实验
+
+- 应用估计策略外层迭代降低约 $73\%$
+- 应用偏好分组可获得最高约 $35\%$ 的通信总量下降，,但会使等待时间略有上升
+- 应用 BDBM，内层循环通信约降低越 $20\%$
+
+---
+
+## Part 5. 不足之处
+
+-v-
+
+### 总结
+1. 依赖 3 个任务历史投标信息反推无人机位置，未考虑通信丢包致信息不足及实际飞行路径非直线的情况
+2. 仿真中严格保证通信拓扑连通性，未应对实际可能的网络分裂问题
+                    </textarea>
+                </section>
+            </div>
+        </div>
+        <script src="../../mkslides-assets/reveal-js/dist/reveal.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/highlight/highlight.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/markdown/markdown.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/math/math.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/notes/notes.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/search/search.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/zoom/zoom.js"></script>
+
+        
+
+        <script>
+            Reveal.initialize({
+                
+                    
+                        history: true,
+                    
+                        slideNumber: "c/t",
+                    
+                        height: 720,
+                    
+                        width: 960,
+                    
+                        transition: "fade",
+                    
+                        transitionSpeed: "fast",
+                    
+                        center: false,
+                    
+                
+                plugins: [
+                    RevealMarkdown, // Must come before the other plugins so they can hook into the generated HTML.
+                    RevealHighlight,
+                    RevealMath.KaTeX,
+                    RevealNotes,
+                    RevealSearch,
+                    RevealZoom,
+
+                    
+                ],
+            });
+        </script>
+    </body>
+</html>

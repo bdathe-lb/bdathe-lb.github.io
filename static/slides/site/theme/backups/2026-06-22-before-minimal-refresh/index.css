@@ -1,0 +1,32 @@
+/* 1. Basic table setup */
+table {
+    width: 100%;
+    border-collapse: collapse; /* Keep this for clean lines */
+    margin-bottom: 2em;
+    font-size: 0.9em;
+}
+
+/* 2. Style all cells with generous padding and a very light bottom border */
+th, td {
+    padding: 1em;                   /* Generous padding is key in minimalist design */
+    text-align: left;               /* Keep everything left-aligned for consistency */
+    border-bottom: 1px solid #eee;  /* A very light separator line between rows */
+}
+
+/* 3. Style the table header separately */
+thead th {
+    font-weight: 800;               /* Use a heavier font-weight for clear hierarchy */
+    color: #111;
+    border-bottom: 2px solid #ccc;  /* A slightly stronger line to separate header from body */
+}
+
+/* 4. Remove the border from the very last row for a clean finish */
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* 5. Keep the main title column slightly more prominent */
+tbody td:first-child {
+    font-weight: bold;
+    color: #222;
+}

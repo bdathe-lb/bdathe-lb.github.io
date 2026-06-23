@@ -1,0 +1,60 @@
+{{ define "main" }}
+<h1>{{ .Page.Title }}</h1>
+<br/>
+
+{{ $configPath := "static/slides/site/mkslides.yml" }}
+{{ if fileExists $configPath }}
+    {{ $config := readFile $configPath | transform.Unmarshal }}
+    <div class="posts-list slides-list">
+    {{ range $section := $config.index.nav }}
+        {{ range $sectionName, $groups := $section }}
+            {{ range $group := $groups }}
+                {{ range $groupName, $entries := $group }}
+                    {{ range $entry := $entries }}
+                        {{ range $title, $file := $entry }}
+                            {{ $html := replaceRE "\\.md$" ".html" $file }}
+                            {{ $deck := printf "/slides/site/%s/%s/%s" $sectionName $groupName $html }}
+                            {{ $label := cond (eq $groupName "meetings") "meeting slides" (printf "%s slides" $groupName) }}
+                            <div class="post slide-item">
+                                <div class="date">{{ $title }}</div>
+                                <h1><a href="{{ $deck }}" title="{{ $title }} slides">{{ $label }}</a></h1>
+                                <div class="summary slide-links">
+                                    <a href="{{ $deck }}" title="View slides">slides</a> |
+                                    <a href="{{ $deck }}?showNotes=true" title="View slides with speaker notes">notes</a> |
+                                    <a href="{{ $deck }}?print-pdf" title="Download as PDF">PDF</a> |
+                                    <a href="{{ $deck }}?print-pdf&showNotes=separate-page" title="Download as PDF with speaker notes">PDF with notes</a>
+                                </div>
+                            </div>
+                        {{ end }}
+                    {{ end }}
+                {{ end }}
+            {{ end }}
+        {{ end }}
+    {{ end }}
+    </div>
+{{ else }}
+    <p>Slides have not been synced yet. Run <code>make slides</code> first.</p>
+{{ end }}
+
+<style>
+.slides-list .slide-item {
+    margin-bottom: 2.5rem;
+}
+
+.slides-list .slide-item h1 {
+    margin-bottom: 0.5rem;
+    padding-top: 0;
+}
+
+.slides-list .slide-links {
+    color: var(--font-color);
+    line-height: 1.6;
+}
+
+.slides-list .slide-links a:hover,
+.slides-list .slide-item h1 a:hover {
+    background-color: transparent !important;
+    color: var(--primary-color) !important;
+}
+</style>
+{{ end }}

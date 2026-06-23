@@ -14,7 +14,7 @@ Throughout my journey of studying and coding, I realized that knowledge needs to
 ### What's here?
 
 * **Posts**:
-    Footprints along the timeline. This includes toy projects for practicing coding skills, debugging logs, and some random daily musings.
+    Footprints along the timeline. This includes toy projects for practicing coding skills, debugging logs, and personal notes.
 
 * **Music**:
     A collection of songs that resonate with me.

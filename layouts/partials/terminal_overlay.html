@@ -1,0 +1,1051 @@
+{{- $aboutPage := .Site.GetPage "/about" -}}
+{{- $aboutContent := "" -}}
+{{- if $aboutPage -}}
+  {{- $aboutContent = $aboutPage.Plain -}}
+{{- end -}}
+
+{{- $posts := slice -}}
+{{- $postsPage := .Site.GetPage "/posts" -}}
+{{- if $postsPage -}}
+  {{- range sort (where $postsPage.RegularPages ".Params.private" "!=" true) "Date" "desc" -}}
+    {{- $url := .RelPermalink -}}
+    {{- $slug := path.Base (strings.TrimSuffix "/" $url) -}}
+    {{- $posts = $posts | append (dict
+      "type" "post"
+      "title" .Title
+      "slug" $slug
+      "date" (.Date | time.Format "2006-01-02")
+      "summary" (.Summary | plainify)
+      "content" .Plain
+      "url" $url
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $music := slice -}}
+{{- if isset .Site.Data "music" -}}
+  {{- range .Site.Data.music -}}
+    {{- $music = $music | append (dict
+      "type" "music"
+      "title" .title
+      "date" (printf "%v" .date)
+      "artist" .artist
+      "album" .album
+      "genre" .genre
+      "summary" .summary
+      "spotify" .spotify
+      "qqmusic" .qqmusic
+      "url" "/music/"
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $photos := slice -}}
+{{- if isset .Site.Data "photos" -}}
+  {{- range .Site.Data.photos -}}
+    {{- $src := .image -}}
+    {{- $imgPath := strings.TrimPrefix "/" .image -}}
+    {{- with resources.Get $imgPath -}}
+      {{- $src = .RelPermalink -}}
+    {{- end -}}
+    {{- $photos = $photos | append (dict
+      "type" "photo"
+      "title" .title
+      "date" (printf "%v" .date)
+      "caption" .caption
+      "image" $src
+      "url" "/photos/"
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+<div class="site-terminal-overlay" id="site-terminal-overlay" aria-hidden="true">
+    <section class="site-terminal-panel" role="dialog" aria-modal="true" aria-label="bdathe shell">
+        <div class="site-terminal-header">
+            <div class="site-terminal-title">
+                <span class="site-terminal-led site-terminal-led-red"></span>
+                <span class="site-terminal-led site-terminal-led-yellow"></span>
+                <span class="site-terminal-led site-terminal-led-green"></span>
+                <span>bdathe@home: ~/shell</span>
+            </div>
+            <button class="site-terminal-close" id="site-terminal-close" type="button" aria-label="Close terminal">x</button>
+        </div>
+        <div class="site-terminal-history" id="site-terminal-history">
+            <div class="site-terminal-line site-terminal-muted">Type help, ls, latest, random, or search &lt;keyword&gt;.</div>
+        </div>
+        <form class="site-terminal-input-line" id="site-terminal-form">
+            <label class="site-terminal-prompt" for="site-terminal-input">guest@bdathe.wiki:~$</label>
+            <input type="text" id="site-terminal-input" class="site-terminal-input" autocomplete="off" spellcheck="false">
+        </form>
+    </section>
+</div>
+
+<style>
+.site-terminal-overlay {
+    --shell-overlay-bg: rgba(0, 0, 0, 0.62);
+    --shell-bg: #222225;
+    --shell-bg-soft: #2b2b30;
+    --shell-bg-strong: #18181b;
+    --shell-border: #3f3f44;
+    --shell-text: #e8e9ed;
+    --shell-muted: #a3abba;
+    --shell-green: #8fd16f;
+    --shell-cyan: #62c4ff;
+    --shell-red: #ff3c74;
+    --shell-yellow: #f3c969;
+    --shell-shadow: rgba(0, 0, 0, 0.55);
+    --shell-scanline: rgba(255, 255, 255, 0.035);
+    --shell-row-hover: rgba(98, 196, 255, 0.08);
+    --shell-rule: rgba(163, 171, 186, 0.35);
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: var(--shell-overlay-bg);
+    backdrop-filter: blur(2px);
+}
+
+html.theme-light .site-terminal-overlay {
+    --shell-overlay-bg: rgba(232, 239, 242, 0.78);
+    --shell-bg: #ffffff;
+    --shell-bg-soft: #f5f9fc;
+    --shell-bg-strong: #e8eff2;
+    --shell-border: #b9c8d0;
+    --shell-text: #151515;
+    --shell-muted: #727578;
+    --shell-green: #237a3f;
+    --shell-cyan: #1a95e0;
+    --shell-red: #d20962;
+    --shell-yellow: #a36f00;
+    --shell-shadow: rgba(21, 21, 21, 0.18);
+    --shell-scanline: rgba(26, 149, 224, 0.04);
+    --shell-row-hover: rgba(26, 149, 224, 0.09);
+    --shell-rule: rgba(114, 117, 120, 0.35);
+}
+
+html.theme-dark .site-terminal-overlay {
+    --shell-overlay-bg: rgba(0, 0, 0, 0.62);
+    --shell-bg: #222225;
+    --shell-bg-soft: #2b2b30;
+    --shell-bg-strong: #18181b;
+    --shell-border: #3f3f44;
+    --shell-text: #e8e9ed;
+    --shell-muted: #a3abba;
+    --shell-green: #8fd16f;
+    --shell-cyan: #62c4ff;
+    --shell-red: #ff3c74;
+    --shell-yellow: #f3c969;
+    --shell-shadow: rgba(0, 0, 0, 0.55);
+    --shell-scanline: rgba(255, 255, 255, 0.035);
+    --shell-row-hover: rgba(98, 196, 255, 0.08);
+    --shell-rule: rgba(163, 171, 186, 0.35);
+}
+
+.site-terminal-overlay.active {
+    display: flex;
+}
+
+.site-terminal-panel {
+    width: min(720px, calc(100vw - 2rem));
+    max-height: min(520px, 75vh);
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, var(--shell-bg-soft), var(--shell-bg));
+    color: var(--shell-text);
+    border: 1px solid var(--shell-border);
+    border-radius: 8px;
+    box-shadow: 0 22px 70px var(--shell-shadow);
+    overflow: hidden;
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 0.92rem;
+}
+
+.site-terminal-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        to bottom,
+        var(--shell-scanline),
+        var(--shell-scanline) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+    opacity: 0.22;
+}
+
+.site-terminal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.65rem 0.8rem;
+    background: var(--shell-bg-strong);
+    border-bottom: 1px solid var(--shell-border);
+    color: var(--shell-cyan);
+    font-weight: bold;
+}
+
+.site-terminal-title {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.site-terminal-led {
+    width: 0.7rem;
+    height: 0.7rem;
+    flex: none;
+    border-radius: 999px;
+}
+
+.site-terminal-led-red {
+    background: var(--shell-red);
+}
+
+.site-terminal-led-yellow {
+    background: var(--shell-yellow);
+}
+
+.site-terminal-led-green {
+    background: var(--shell-green);
+    margin-right: 0.35rem;
+}
+
+.site-terminal-close {
+    width: 1.8rem;
+    height: 1.8rem;
+    padding: 0;
+    border: 1px solid var(--shell-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--shell-muted);
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.site-terminal-close:hover {
+    color: var(--shell-cyan);
+    border-color: var(--shell-cyan);
+}
+
+.site-terminal-history {
+    min-height: 240px;
+    overflow-y: auto;
+    padding: 1rem;
+    line-height: 1.55;
+}
+
+.site-terminal-line {
+    margin-bottom: 0.55rem;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.site-terminal-command {
+    color: var(--shell-cyan);
+    font-weight: bold;
+}
+
+.site-terminal-error {
+    color: var(--shell-red);
+}
+
+.site-terminal-success {
+    color: var(--shell-green);
+}
+
+.site-terminal-muted {
+    color: var(--shell-muted);
+}
+
+.site-terminal-link {
+    color: var(--shell-cyan);
+    text-decoration: underline;
+}
+
+.site-terminal-table {
+    display: grid;
+    gap: 0;
+    margin: 0.35rem 0 0.85rem;
+}
+
+.site-terminal-row {
+    display: grid;
+    grid-template-columns: var(--terminal-columns);
+    column-gap: 1rem;
+    min-width: 0;
+    padding: 0.12rem 0;
+}
+
+.site-terminal-row-head {
+    color: var(--shell-muted);
+    border-bottom: 1px solid var(--shell-rule);
+    margin-bottom: 0.2rem;
+    padding-bottom: 0.25rem;
+}
+
+.site-terminal-row:not(.site-terminal-row-head):hover {
+    background: var(--shell-row-hover);
+}
+
+.site-terminal-cell {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.site-terminal-cell a {
+    color: var(--shell-cyan);
+    text-decoration: none;
+}
+
+.site-terminal-cell a:hover {
+    color: var(--shell-cyan);
+    text-decoration: underline;
+    background: transparent !important;
+}
+
+.site-terminal-photo {
+    max-width: 180px;
+    max-height: 140px;
+    display: block;
+    margin-top: 0.5rem;
+    border: 1px solid var(--secondary-color);
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.site-terminal-input-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1rem;
+    background: var(--shell-bg-strong);
+    border-top: 1px solid var(--shell-border);
+}
+
+.site-terminal-prompt {
+    flex: none;
+    color: var(--shell-green);
+    font-weight: bold;
+}
+
+.site-terminal-input {
+    min-width: 0;
+    flex: 1;
+    border: 0 !important;
+    outline: 0 !important;
+    background: transparent;
+    color: var(--shell-text);
+    caret-color: var(--shell-green);
+    font: inherit;
+    box-shadow: none !important;
+    appearance: none;
+}
+
+.site-terminal-input:focus {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+}
+
+[data-terminal-trigger] {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+[data-terminal-trigger]:hover {
+    color: var(--primary-color);
+}
+
+[data-terminal-trigger]::after {
+    content: "open shell / Ctrl+K";
+    position: absolute;
+    left: 50%;
+    bottom: -1.9rem;
+    z-index: 10001;
+    width: max-content;
+    max-width: 12rem;
+    padding: 0.25rem 0.45rem;
+    border: 1px solid var(--secondary-color);
+    border-radius: 4px;
+    background: var(--background-color);
+    color: var(--font-color);
+    font-size: 0.75rem;
+    font-weight: normal;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-2px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+[data-terminal-trigger]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+@media only screen and (max-width: 640px) {
+    .site-terminal-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .site-terminal-panel {
+        width: 100%;
+        max-height: 82vh;
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .site-terminal-input-line {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .site-terminal-input {
+        width: 100%;
+    }
+
+    .site-terminal-row {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+        column-gap: 0.75rem;
+    }
+
+    .site-terminal-cell-optional {
+        display: none;
+    }
+}
+</style>
+
+<script>
+window.bdatheTerminalData = {
+    sections: {
+        home: '/',
+        about: '/about/',
+        posts: '/posts/',
+        slides: '/slides/',
+        music: '/music/',
+        photos: '/photos/'
+    },
+    about: {{ $aboutContent | jsonify | safeJS }},
+    posts: {{ $posts | jsonify | safeJS }},
+    music: {{ $music | jsonify | safeJS }},
+    photos: {{ $photos | jsonify | safeJS }}
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('site-terminal-overlay');
+    const closeButton = document.getElementById('site-terminal-close');
+    const historyEl = document.getElementById('site-terminal-history');
+    const form = document.getElementById('site-terminal-form');
+    const input = document.getElementById('site-terminal-input');
+    const data = window.bdatheTerminalData;
+
+    if (!overlay || !historyEl || !form || !input || !data) return;
+
+    const commandHistory = [];
+    let commandHistoryIndex = -1;
+
+    const commands = {
+        help: 'Show available commands',
+        ls: 'List site directories',
+        status: 'Show site module counts',
+        tree: 'Print site structure',
+        neofetch: 'Show a profile card',
+        latest: 'Show recent site activity',
+        about: 'Show a short introduction',
+        posts: 'List public posts',
+        post: 'Preview a post: post <slug>',
+        open: 'Open a section or post: open <target>',
+        search: 'Search site content: search <keyword>',
+        random: 'Randomly explore the site',
+        now: 'Recommend music or a photo',
+        fortune: 'Print a random line',
+        music: 'Recommend a random song',
+        photo: 'Show a random photo',
+        theme: 'Switch theme: theme light|dark',
+        clear: 'Clear the terminal'
+    };
+
+    const aliases = {
+        cat: 'post',
+        cd: 'open',
+        dir: 'ls',
+        roll: 'random'
+    };
+
+    const fortunes = [
+        'Keep Healthy, Keep Coding, Keep Writing.',
+        'What I cannot create, I do not understand.',
+        'Small notes compound into a map.',
+        'A quiet system is easier to maintain.',
+        'Read slowly. Build deliberately.'
+    ];
+
+    const normalize = (value) => String(value || '').toLowerCase();
+    const compact = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const excerpt = (value, limit = 150) => {
+        const text = compact(value);
+        if (text.length <= limit) return text;
+        return text.slice(0, limit).trimEnd() + '...';
+    };
+    const randomItem = (items) => items[Math.floor(Math.random() * items.length)];
+
+    const scrollBottom = () => {
+        historyEl.scrollTop = historyEl.scrollHeight;
+    };
+
+    const printLine = (text = '', className = '') => {
+        const line = document.createElement('div');
+        line.className = 'site-terminal-line';
+        if (className) line.classList.add(className);
+        line.textContent = text;
+        historyEl.appendChild(line);
+        scrollBottom();
+        return line;
+    };
+
+    const printLinkLine = (prefix, label, href) => {
+        const line = document.createElement('div');
+        line.className = 'site-terminal-line';
+        line.appendChild(document.createTextNode(prefix));
+        const link = document.createElement('a');
+        link.className = 'site-terminal-link';
+        link.href = href;
+        link.textContent = label;
+        line.appendChild(link);
+        historyEl.appendChild(line);
+        scrollBottom();
+    };
+
+    const printTable = (columns, rows) => {
+        const table = document.createElement('div');
+        table.className = 'site-terminal-table';
+        table.style.setProperty('--terminal-columns', columns.map((column) => column.width).join(' '));
+
+        const appendRow = (row, isHeader = false) => {
+            const rowEl = document.createElement('div');
+            rowEl.className = isHeader ? 'site-terminal-row site-terminal-row-head' : 'site-terminal-row';
+
+            columns.forEach((column) => {
+                const cell = document.createElement('div');
+                cell.className = 'site-terminal-cell';
+                if (column.optional) cell.classList.add('site-terminal-cell-optional');
+                if (column.className) cell.classList.add(column.className);
+
+                const text = compact(row[column.key]);
+                cell.title = text;
+
+                if (!isHeader && column.link && row.url) {
+                    const link = document.createElement('a');
+                    link.href = row.url;
+                    link.textContent = text;
+                    cell.appendChild(link);
+                } else {
+                    cell.textContent = text;
+                }
+
+                rowEl.appendChild(cell);
+            });
+
+            table.appendChild(rowEl);
+        };
+
+        appendRow(Object.fromEntries(columns.map((column) => [column.key, column.label])), true);
+        rows.forEach((row) => appendRow(row));
+        historyEl.appendChild(table);
+        scrollBottom();
+    };
+
+    const printImage = (src, alt) => {
+        const line = document.createElement('div');
+        line.className = 'site-terminal-line';
+        const img = document.createElement('img');
+        img.className = 'site-terminal-photo';
+        img.src = src;
+        img.alt = alt || '';
+        img.loading = 'lazy';
+        line.appendChild(img);
+        historyEl.appendChild(line);
+        scrollBottom();
+    };
+
+    const openTerminal = () => {
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+        setTimeout(() => input.focus(), 0);
+    };
+
+    const closeTerminal = () => {
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+    };
+
+    const setTheme = (theme) => {
+        const dark = theme === 'dark';
+        document.documentElement.classList.toggle('theme-dark', dark);
+        document.documentElement.classList.toggle('theme-light', !dark);
+        localStorage.setItem('theme', theme);
+        const toggleIcon = document.getElementById('theme-toggle-icon');
+        if (toggleIcon) toggleIcon.textContent = dark ? '☀️' : '🌙';
+        document.dispatchEvent(new CustomEvent('themeChanged', { detail: theme }));
+    };
+
+    const findPost = (target) => {
+        const query = normalize(target);
+        return data.posts.find((post) => {
+            return normalize(post.slug) === query || normalize(post.title) === query;
+        });
+    };
+
+    const previewPost = (post) => {
+        printLine(post.title, 'site-terminal-success');
+        printLine(post.date);
+        printLine(excerpt(post.summary || post.content));
+        printLinkLine('[open] ', post.url, post.url);
+    };
+
+    const previewMusic = (item) => {
+        printLine(`${item.title} - ${item.artist}`, 'site-terminal-success');
+        if (item.genre) printLine(`# ${item.genre}`);
+        printLine(excerpt(item.summary));
+        printLinkLine('[open] ', item.url, item.url);
+    };
+
+    const previewPhoto = (item) => {
+        printLine(`${item.title} (${item.date})`, 'site-terminal-success');
+        if (item.caption) printLine(excerpt(item.caption));
+        if (item.image) printImage(item.image, item.title);
+        printLinkLine('[open] ', item.url, item.url);
+    };
+
+    const handlers = {
+        help: () => {
+            printLine('Available commands:');
+            printTable(
+                [
+                    { key: 'cmd', label: 'CMD', width: '8rem', className: 'site-terminal-success' },
+                    { key: 'desc', label: 'DESCRIPTION', width: 'minmax(0, 1fr)' }
+                ],
+                Object.keys(commands).map((name) => ({ cmd: name, desc: commands[name] }))
+            );
+            printLine('Aliases: cat -> post, cd -> open, roll -> random', 'site-terminal-muted');
+        },
+
+        ls: () => {
+            printLine('site directories:', 'site-terminal-success');
+            printTable(
+                [
+                    { key: 'mode', label: 'MODE', width: '4.5rem', className: 'site-terminal-muted' },
+                    { key: 'name', label: 'NAME', width: 'minmax(0, 1fr)', link: true },
+                    { key: 'info', label: 'INFO', width: 'minmax(0, 1.2fr)', optional: true },
+                    { key: 'path', label: 'PATH', width: 'minmax(0, 0.9fr)', optional: true, className: 'site-terminal-muted' }
+                ],
+                [
+                    { mode: 'dr-x', name: 'about', info: 'profile and contact', path: data.sections.about, url: data.sections.about },
+                    { mode: 'dr-x', name: 'posts', info: `${data.posts.length} public posts`, path: data.sections.posts, url: data.sections.posts },
+                    { mode: 'dr-x', name: 'slides', info: 'mkslides reports', path: data.sections.slides, url: data.sections.slides },
+                    { mode: 'dr-x', name: 'music', info: `${data.music.length} tracks`, path: data.sections.music, url: data.sections.music },
+                    { mode: 'dr-x', name: 'photos', info: `${data.photos.length} photos`, path: data.sections.photos, url: data.sections.photos }
+                ]
+            );
+        },
+
+        status: () => {
+            printLine('system status:', 'site-terminal-success');
+            printTable(
+                [
+                    { key: 'module', label: 'MODULE', width: '8rem', className: 'site-terminal-muted' },
+                    { key: 'value', label: 'VALUE', width: 'minmax(0, 1fr)' },
+                    { key: 'path', label: 'PATH', width: 'minmax(0, 1fr)', optional: true, className: 'site-terminal-muted' }
+                ],
+                [
+                    { module: 'posts', value: `${data.posts.length} public posts`, path: data.sections.posts },
+                    { module: 'slides', value: 'mkslides reports', path: data.sections.slides },
+                    { module: 'music', value: `${data.music.length} tracks`, path: data.sections.music },
+                    { module: 'photos', value: `${data.photos.length} photos`, path: data.sections.photos },
+                    { module: 'shell', value: 'interactive overlay ready', path: 'Ctrl+K' },
+                    { module: 'theme', value: document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light', path: 'theme light|dark' }
+                ]
+            );
+        },
+
+        tree: () => {
+            printLine('.');
+            printLine('|-- about/');
+            printLine(`|-- posts/ (${data.posts.length})`);
+            data.posts.slice(0, 3).forEach((post) => {
+                printLine(`|   |-- ${post.slug}`);
+            });
+            if (data.posts.length > 3) printLine(`|   \`-- ... ${data.posts.length - 3} more`);
+            printLine('|-- slides/ (mkslides)');
+            printLine(`|-- music/ (${data.music.length})`);
+            printLine(`|-- photos/ (${data.photos.length})`);
+            printLine('`-- shell/ (overlay)');
+        },
+
+        neofetch: () => {
+            printLine('bdathe@home', 'site-terminal-success');
+            printTable(
+                [
+                    { key: 'key', label: 'KEY', width: '8rem', className: 'site-terminal-muted' },
+                    { key: 'value', label: 'VALUE', width: 'minmax(0, 1fr)' }
+                ],
+                [
+                    { key: 'host', value: 'bdathe.wiki' },
+                    { key: 'role', value: 'CS graduate student' },
+                    { key: 'focus', value: 'UAV task allocation / path planning' },
+                    { key: 'modules', value: 'posts, slides, music, photos, shell' },
+                    { key: 'theme', value: document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light' },
+                    { key: 'hint', value: 'try: search <keyword>, random, now' }
+                ]
+            );
+        },
+
+        latest: () => {
+            const rows = data.posts.slice(0, 3).map((post) => ({
+                type: 'post',
+                date: post.date,
+                name: post.title,
+                path: post.url,
+                url: post.url
+            }));
+
+            if (data.music.length > 0) {
+                const track = data.music[0];
+                rows.push({
+                    type: 'music',
+                    date: track.date || '',
+                    name: `${track.title} - ${track.artist}`,
+                    path: data.sections.music,
+                    url: data.sections.music
+                });
+            }
+
+            if (data.photos.length > 0) {
+                const photo = data.photos[0];
+                rows.push({
+                    type: 'photo',
+                    date: photo.date || '',
+                    name: photo.title,
+                    path: data.sections.photos,
+                    url: data.sections.photos
+                });
+            }
+
+            printLine('latest content:', 'site-terminal-success');
+            printTable(
+                [
+                    { key: 'type', label: 'TYPE', width: '5rem', className: 'site-terminal-muted' },
+                    { key: 'date', label: 'DATE', width: '6.8rem', optional: true },
+                    { key: 'name', label: 'NAME', width: 'minmax(0, 1.45fr)', link: true },
+                    { key: 'path', label: 'PATH', width: 'minmax(0, 0.9fr)', optional: true, className: 'site-terminal-muted' }
+                ],
+                rows
+            );
+        },
+
+        about: () => {
+            if (!data.about) {
+                printLine('No about content found.', 'site-terminal-error');
+                return;
+            }
+            printLine(excerpt(data.about, 420));
+            printLinkLine('[open] ', data.sections.about, data.sections.about);
+        },
+
+        posts: () => {
+            if (data.posts.length === 0) {
+                printLine('No public posts found.');
+                return;
+            }
+            printTable(
+                [
+                    { key: 'date', label: 'DATE', width: '6.8rem', optional: true },
+                    { key: 'slug', label: 'SLUG', width: '12rem', className: 'site-terminal-muted' },
+                    { key: 'title', label: 'TITLE', width: 'minmax(0, 1fr)', link: true }
+                ],
+                data.posts.map((post) => ({
+                    date: post.date,
+                    slug: post.slug,
+                    title: post.title,
+                    url: post.url
+                }))
+            );
+        },
+
+        post: (args) => {
+            if (args.length === 0) {
+                printLine('Usage: post <slug>', 'site-terminal-error');
+                return;
+            }
+            const post = findPost(args.join(' '));
+            if (!post) {
+                printLine(`Post not found: ${args.join(' ')}`, 'site-terminal-error');
+                return;
+            }
+            previewPost(post);
+        },
+
+        open: (args) => {
+            if (args.length === 0) {
+                printLine('Usage: open <home|about|posts|slides|music|photos|post-slug>', 'site-terminal-error');
+                return;
+            }
+            const target = args.join(' ');
+            const key = normalize(target);
+            if (data.sections[key]) {
+                window.location.href = data.sections[key];
+                return;
+            }
+            const post = findPost(target);
+            if (post) {
+                window.location.href = post.url;
+                return;
+            }
+            printLine(`Unknown target: ${target}`, 'site-terminal-error');
+        },
+
+        search: (args) => {
+            const query = compact(args.join(' '));
+            if (!query) {
+                printLine('Usage: search <keyword>', 'site-terminal-error');
+                return;
+            }
+            const needle = normalize(query);
+            const results = [];
+
+            data.posts.forEach((post) => {
+                const haystack = normalize(`${post.title} ${post.slug} ${post.summary} ${post.content}`);
+                if (haystack.includes(needle)) {
+                    results.push({ type: 'post', name: post.title, info: excerpt(post.summary || post.content, 72), path: post.url, url: post.url });
+                }
+            });
+
+            data.music.forEach((item) => {
+                const haystack = normalize(`${item.title} ${item.artist} ${item.album} ${item.genre} ${item.summary}`);
+                if (haystack.includes(needle)) {
+                    results.push({ type: 'music', name: `${item.title} - ${item.artist}`, info: excerpt(item.summary, 72), path: item.url, url: item.url });
+                }
+            });
+
+            data.photos.forEach((item) => {
+                const haystack = normalize(`${item.title} ${item.date} ${item.caption}`);
+                if (haystack.includes(needle)) {
+                    results.push({ type: 'photo', name: item.title, info: excerpt(item.caption, 72), path: item.url, url: item.url });
+                }
+            });
+
+            if (results.length === 0) {
+                printLine(`No results for "${query}".`);
+                return;
+            }
+
+            printLine(`Found ${results.length} result(s):`, 'site-terminal-success');
+            printTable(
+                [
+                    { key: 'type', label: 'TYPE', width: '5rem', className: 'site-terminal-muted' },
+                    { key: 'name', label: 'NAME', width: 'minmax(0, 1.25fr)', link: true },
+                    { key: 'info', label: 'INFO', width: 'minmax(0, 1fr)', optional: true },
+                    { key: 'path', label: 'PATH', width: 'minmax(0, 0.75fr)', optional: true, className: 'site-terminal-muted' }
+                ],
+                results.slice(0, 8)
+            );
+            if (results.length > 8) printLine(`...and ${results.length - 8} more.`);
+        },
+
+        random: () => {
+            const pool = [
+                ...data.posts,
+                ...data.music,
+                ...data.photos
+            ];
+            if (pool.length === 0) {
+                printLine('Nothing to explore yet.');
+                return;
+            }
+            const item = randomItem(pool);
+            if (item.type === 'post') previewPost(item);
+            if (item.type === 'music') previewMusic(item);
+            if (item.type === 'photo') previewPhoto(item);
+        },
+
+        now: () => {
+            const pool = [
+                ...data.music,
+                ...data.photos
+            ];
+            if (pool.length === 0) {
+                printLine('Nothing to recommend yet.');
+                return;
+            }
+            const item = randomItem(pool);
+            if (item.type === 'music') previewMusic(item);
+            if (item.type === 'photo') previewPhoto(item);
+        },
+
+        fortune: () => {
+            printLine(randomItem(fortunes), 'site-terminal-success');
+        },
+
+        music: () => {
+            if (data.music.length === 0) {
+                printLine('No music found.');
+                return;
+            }
+            previewMusic(randomItem(data.music));
+        },
+
+        photo: () => {
+            if (data.photos.length === 0) {
+                printLine('No photos found.');
+                return;
+            }
+            previewPhoto(randomItem(data.photos));
+        },
+
+        theme: (args) => {
+            if (args.length === 0) {
+                const current = document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light';
+                printLine(`Current theme: ${current}. Usage: theme light|dark`);
+                return;
+            }
+            const nextTheme = normalize(args[0]);
+            if (nextTheme !== 'light' && nextTheme !== 'dark') {
+                printLine('Usage: theme light|dark', 'site-terminal-error');
+                return;
+            }
+            setTheme(nextTheme);
+            printLine(`Theme set to ${nextTheme}.`, 'site-terminal-success');
+        },
+
+        clear: () => {
+            historyEl.innerHTML = '';
+        }
+    };
+
+    const runCommand = (rawInput) => {
+        const trimmed = rawInput.trim();
+        if (!trimmed) return;
+
+        commandHistory.push(trimmed);
+        commandHistoryIndex = commandHistory.length;
+        printLine(`guest@bdathe.wiki:~$ ${trimmed}`, 'site-terminal-command');
+
+        const parts = trimmed.split(/\s+/);
+        const commandName = normalize(parts[0]);
+        const resolvedName = aliases[commandName] || commandName;
+        const args = parts.slice(1);
+
+        if (!handlers[resolvedName]) {
+            printLine(`Command not found: ${commandName}. Type help.`, 'site-terminal-error');
+            return;
+        }
+
+        handlers[resolvedName](args);
+    };
+
+    const completeInput = () => {
+        const value = input.value.trimStart();
+        if (!value) return;
+
+        const parts = value.split(/\s+/);
+        const current = normalize(parts[parts.length - 1]);
+
+        if (parts.length === 1) {
+            const names = [...Object.keys(commands), ...Object.keys(aliases)];
+            const matches = names.filter((name) => name.startsWith(current));
+            if (matches.length === 1) input.value = matches[0] + ' ';
+            if (matches.length > 1) printLine(matches.join('    '));
+            return;
+        }
+
+        const commandName = aliases[normalize(parts[0])] || normalize(parts[0]);
+        if (commandName === 'post' || commandName === 'open') {
+            const sectionNames = commandName === 'open' ? Object.keys(data.sections) : [];
+            const postSlugs = data.posts.map((post) => post.slug);
+            const matches = [...sectionNames, ...postSlugs].filter((name) => normalize(name).startsWith(current));
+            if (matches.length === 1) input.value = `${parts[0]} ${matches[0]}`;
+            if (matches.length > 1) printLine(matches.join('    '));
+        }
+    };
+
+    document.querySelectorAll('[data-terminal-trigger]').forEach((trigger) => {
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            openTerminal();
+        });
+    });
+
+    closeButton.addEventListener('click', closeTerminal);
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) closeTerminal();
+    });
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const value = input.value;
+        input.value = '';
+        runCommand(value);
+    });
+
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            completeInput();
+            return;
+        }
+
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (commandHistory.length === 0) return;
+            if (commandHistoryIndex > 0) commandHistoryIndex -= 1;
+            input.value = commandHistory[commandHistoryIndex] || '';
+            return;
+        }
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            if (commandHistory.length === 0) return;
+            if (commandHistoryIndex < commandHistory.length - 1) {
+                commandHistoryIndex += 1;
+                input.value = commandHistory[commandHistoryIndex] || '';
+            } else {
+                commandHistoryIndex = commandHistory.length;
+                input.value = '';
+            }
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        const key = normalize(event.key);
+        if ((event.ctrlKey || event.metaKey) && key === 'k') {
+            event.preventDefault();
+            openTerminal();
+            return;
+        }
+
+        if (event.key === 'Escape' && overlay.classList.contains('active')) {
+            event.preventDefault();
+            closeTerminal();
+        }
+    });
+});
+</script>

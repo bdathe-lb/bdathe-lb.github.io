@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+        
+            <link rel="icon" href="../../assets/icon/cat.ico">
+        
+
+        <link rel="stylesheet" href="../../mkslides-assets/reveal-js/dist/reveal.css" />
+
+        
+            <link rel="stylesheet" href="../../theme/slides.css" />
+        
+        
+            <link rel="stylesheet" href="../../mkslides-assets/highlight-js-themes/atom-one-light.css" />
+        
+
+        
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+                <section data-markdown
+                
+                    data-separator="^\s*---\s*$"
+                
+                    data-separator-vertical="^\s*-v-\s*$"
+                
+                    data-separator-notes="^Notes?:"
+                
+                    data-charset="utf-8"
+                
+                >
+                    <!-- The markdown must be placed to the whole left to prevent indentation issues like https://github.com/MartenBE/mkslides/issues/52 -->
+                    <textarea data-template>
+# 面向通信受限环境的鲁棒自适应任务分配算法
+
+<hr>
+
+<div class="avatar-container">
+<span class="avatar-name"> 刘标 </span>
+</div>
+
+---
+
+## Part 1. 背景
+
+-v-
+
+### 静态 $\to$ 动态
+**原始 PI 算法**：
+- 假设通信全连通
+- 采用“先分配，后执行”的静态模式
+
+**V1**：
+- 由于是动态拓扑，采取“边跑边算” + “强制声明”策略
+- 低通信半径下出现了严重的死锁和物理冲突
+
+-v-
+
+### V1 失败分析
+**现象**：
+- 智能体在原地打转，仿真跑满 5000s 不结束
+- 两个智能体同时冲向同一个任务，发生碰撞
+
+**原因**：
+1. 震荡：任务在“纳入”和“移除”之间反复横跳
+2. 信息滞后：断连导致旧的“占有”信息覆盖了新的“放弃”信息
+3. 信息不一致：通信延迟导致双方都认为自己拥有任务
+
+---
+
+## Part 2. 改进
+
+-v-
+
+### 稳定性优先
+**目标**：
+- 不死锁
+- 不冲突
+- 必收敛
+
+**核心原则**：
+- 信息时效 > 成本优势
+
+-v-
+
+### V2 的核心机制
+- **标量任务时间戳**： 解决信息一致性问题
+- **黑名单/墓碑机制**： 解决死锁与震荡问题
+- **强执行锁**： 广播智能体状态和目标任务解决物理层面的冲突
+- **拥塞感知**：检测局部密度，通过惩罚机制疏散密集区域的智能体，防止死锁
+
+```python
+def run_iteration(self, messages) -> None:
+    # ...
+    # 1. 任务包含阶段
+    self._task_inclusion_phase()
+    # 2. 信息共识阶段
+    self._consensus_phase(messages)
+    # 3. 任务移除阶段
+    self._task_removal_phase()
+    # ...
+```
+
+-v-
+### 算法核心迭代
+```python
+def run_iteration(self, messages) -> None:
+        # ...
+        # 1. 检查拥塞情况
+        self._calculate_congestion_status(messages)
+        # 2. 清理过时信息
+        self._check_stale_information()
+        # 3. 任务包含阶段
+        self._task_inclusion_phase()
+        # 4. 信息共识阶段
+        self._consensus_phase(messages)
+        # 5. 任务移除阶段
+        self._task_removal_phase()
+        # 6. 清理任务黑名单
+        self._cleanup_blacklist()
+```
+
+-v-
+
+### V2 的瓶颈分析
+**现状**：
+- 系统虽然稳定，但救援成功率很低，总里程也更高
+- 相比基准算法，差距巨大
+
+**原因**：
+- 短视：V2 沿用 PI 的贪婪策略，只看“谁顺路”，不看“谁快死了”，导致远处紧急任务因没人接而超时
+- 死板：路径规划是简单的“插入法”，容易走出“之字形”冤枉路，浪费时间
+- 过度防御：一旦路径稍微不顺（比如被抢了一个中间任务），立刻移除后续所有任务，缺乏“抢救”机制
+
+---
+
+## Part 3. 再改进
+
+-v-
+
+### V3 核心机制
+为了提升成功率，对决策逻辑进行了根本性改造：
+- 入选策略：从 Sig 优先 $\to$ 动态调整 Sig 和DDL 优先级 (Tiered Sorting)
+- 路径策略：从 贪婪插入 $\to$ 局部优化 (2-Opt)
+- 移除策略：从 立即处决 $\to$ 死缓抢救 (Repair-before-Remove)
+
+---
+
+## Part 4. 仿真模拟
+
+-v-
+
+### 实验配置
+**场景配置**：
+- 地图：$2000\text{m} \times 2000\text{m}$
+- 规模：$6\text{ Agents / } 12 \text{ Tasks}$
+- 通信：$50\text{m} / 100 \text{m}$
+- 测试量：$500$次随机种子
+
+**评价指标**：
+- 成功率：所有任务（除了必然不能完成的）成功完成的比例
+- 平均耗时：完成任务的平均时间
+- 总里程：完成任务的所有智能体的总路程
+
+-v-
+
+### 仿真结果
+
+---
+
+## Part 5. 机制包装
+
+-v-
+
+### 痛点 1：动态环境下的通信震荡与死锁
+- 原始PI缺陷：假设网络稳定，遇到断连或延迟时，任务所有权信息不一致，导致震荡
+- 零散修改：标量时间戳、黑名单、强执行锁
+- 机制："Robust Consensus Mechanism" (鲁棒共识机制)
+   > 提出一种基于 $\text{Scalar Timestamp}$ 和 $\text{Blacklist}$ 的防震荡协议，确保在低通信环境下算法仍能收敛
+
+-v-
+
+### 痛点 2：物理密集区的资源冲突与活锁
+- 原始PI缺陷：只考虑竞标代价，不考虑物理空间拥挤，导致无人机扎堆，甚至因互相阻挡而陷入冻结
+- 零散修改：拥塞感知惩罚、绝望逻辑
+- 机制："Conflict-Aware Bidding Strategy" (冲突感知竞标策略)
+   > 描述：引入 $\text{Congestion Penalty}$ 和 $\text{Exemption}$，通过经济杠杆（代价函数）在物理层面疏导无人机流向
+
+-v-
+
+### 痛点 3：短视规划导致的任务超时与羊群效应
+- 原始PI缺陷：只看距离，忽略Deadline，且无全局视角，导致紧急任务超时或大家蜂拥抢夺同一个任务
+- 零散修改：Strict EDF、Tiered Sorting（分层排序）、Pinned 2-Opt、Repair-before-Remove
+- 机制："Spatiotemporal Optimization Module" (时空联合优化模块)
+  > 描述：提出 $\text{Tiered Sorting}$ 平衡紧急度（时间）与距离（空间），结合 Pinned 2-Opt 提升单机执行效率
+
+---
+
+## Part 6. 论文结构
+
+-v-
+
+### 结构
+
+0. $\text{Abstract}$
+1. $\text{Introduction}$
+2. $\text{Related Work}$
+3. $\text{Problem Formulation}$
+4. $\text{Methodolody}$
+5. $\text{Experiments}$
+6. $\text{Conclusion}$
+                    </textarea>
+                </section>
+            </div>
+        </div>
+        <script src="../../mkslides-assets/reveal-js/dist/reveal.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/highlight/highlight.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/markdown/markdown.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/math/math.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/notes/notes.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/search/search.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/zoom/zoom.js"></script>
+
+        
+
+        <script>
+            Reveal.initialize({
+                
+                    
+                        history: true,
+                    
+                        slideNumber: "c/t",
+                    
+                        height: 720,
+                    
+                        width: 960,
+                    
+                        transition: "fade",
+                    
+                        transitionSpeed: "fast",
+                    
+                        center: false,
+                    
+                
+                plugins: [
+                    RevealMarkdown, // Must come before the other plugins so they can hook into the generated HTML.
+                    RevealHighlight,
+                    RevealMath.KaTeX,
+                    RevealNotes,
+                    RevealSearch,
+                    RevealZoom,
+
+                    
+                ],
+            });
+        </script>
+    </body>
+</html>

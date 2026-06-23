@@ -1,0 +1,153 @@
+<div class="site-loader" id="site-loader" aria-hidden="false">
+    <div class="site-loader-inner" role="status" aria-live="polite">
+        <div class="site-loader-brand">
+            <span>bdathe@home</span><span class="site-loader-cursor">_</span>
+        </div>
+        <div class="site-loader-subtitle">personal wiki initializing</div>
+        <div class="site-loader-track" aria-hidden="true">
+            <div class="site-loader-bar"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.site-loader {
+    --loader-bg: #222225;
+    --loader-text: #e8e9ed;
+    --loader-muted: #a3abba;
+    --loader-primary: #62c4ff;
+    --loader-track: #3f3f44;
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: var(--loader-bg);
+    color: var(--loader-text);
+    transition: opacity 0.42s ease, visibility 0.42s ease;
+}
+
+html.theme-light .site-loader {
+    --loader-bg: #fff;
+    --loader-text: #151515;
+    --loader-muted: #727578;
+    --loader-primary: #1a95e0;
+    --loader-track: #e8eff2;
+}
+
+html.theme-dark .site-loader {
+    --loader-bg: #222225;
+    --loader-text: #e8e9ed;
+    --loader-muted: #a3abba;
+    --loader-primary: #62c4ff;
+    --loader-track: #3f3f44;
+}
+
+.site-loader.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.site-loader-inner {
+    width: min(360px, 84vw);
+    text-align: center;
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+.site-loader-brand {
+    display: inline-flex;
+    align-items: baseline;
+    color: var(--loader-primary);
+    font-size: 1.35rem;
+    font-weight: bold;
+    letter-spacing: 0;
+}
+
+.site-loader-cursor {
+    margin-left: 0.2rem;
+    animation: siteLoaderBlink 1s step-end infinite;
+}
+
+.site-loader-subtitle {
+    margin-top: 0.7rem;
+    color: var(--loader-muted);
+    font-size: 0.85rem;
+}
+
+.site-loader-track {
+    height: 2px;
+    margin-top: 1.25rem;
+    overflow: hidden;
+    background: var(--loader-track);
+}
+
+.site-loader-bar {
+    width: 42%;
+    height: 100%;
+    background: var(--loader-primary);
+    animation: siteLoaderProgress 1.05s ease-in-out infinite;
+}
+
+@keyframes siteLoaderBlink {
+    50% {
+        opacity: 0;
+    }
+}
+
+@keyframes siteLoaderProgress {
+    0% {
+        transform: translateX(-110%);
+    }
+    100% {
+        transform: translateX(250%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .site-loader,
+    .site-loader-bar,
+    .site-loader-cursor {
+        animation: none;
+        transition: none;
+    }
+}
+</style>
+
+<script>
+(function() {
+    const loader = document.getElementById('site-loader');
+    if (!loader) return;
+
+    const storageKey = 'bdathe.loader.seen';
+    const hasSeenLoader = sessionStorage.getItem(storageKey) === 'true';
+
+    if (hasSeenLoader) {
+        loader.classList.add('is-hidden');
+        loader.setAttribute('aria-hidden', 'true');
+        return;
+    }
+
+    const startedAt = Date.now();
+    const minVisibleMs = 620;
+
+    const hideLoader = () => {
+        const elapsed = Date.now() - startedAt;
+        const delay = Math.max(0, minVisibleMs - elapsed);
+
+        window.setTimeout(() => {
+            sessionStorage.setItem(storageKey, 'true');
+            loader.classList.add('is-hidden');
+            loader.setAttribute('aria-hidden', 'true');
+        }, delay);
+    };
+
+    if (document.readyState === 'complete') {
+        hideLoader();
+    } else {
+        window.addEventListener('load', hideLoader, { once: true });
+    }
+})();
+</script>

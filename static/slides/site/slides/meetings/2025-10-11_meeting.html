@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+        
+            <link rel="icon" href="../../assets/icon/cat.ico">
+        
+
+        <link rel="stylesheet" href="../../mkslides-assets/reveal-js/dist/reveal.css" />
+
+        
+            <link rel="stylesheet" href="../../theme/slides.css" />
+        
+        
+            <link rel="stylesheet" href="../../mkslides-assets/highlight-js-themes/atom-one-light.css" />
+        
+
+        
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+                <section data-markdown
+                
+                    data-separator="^\s*---\s*$"
+                
+                    data-separator-vertical="^\s*-v-\s*$"
+                
+                    data-separator-notes="^Notes?:"
+                
+                    data-charset="utf-8"
+                
+                >
+                    <!-- The markdown must be placed to the whole left to prevent indentation issues like https://github.com/MartenBE/mkslides/issues/52 -->
+                    <textarea data-template>
+# Heuristic Distributed Task Allocation: A Smart Solution for Search and Rescue
+
+---
+## Part 1. Setting the Stage
+
+-v-
+
+### Allocating Tasks in Rescue Missions
+
+- Scenario: 
+    - Disaster relief and search & rescue (SAR) operations.
+- Resources: 
+    - Using multiple drones (UAVs) and ground robots (vehicles).
+- The Challenge: 
+    - How to efficiently assign multiple rescue tasks to these multiple vehicles?
+
+> Key: The Multi-Vehicle Multitask Allocation Problem.
+
+---
+
+## Part 2. The Challenge
+
+-v-
+
+### Why Is This Problem Hard?
+
+- NP-Hard: Finding the absolute best solution is computationally too costly.
+- Flaws in Traditional Methods:
+    - Centralized Systems: High risk of single point of failure (if the server crashes).
+    - Old Distributed Methods: Focus too much on individual vehicle cost, neglecting the overall system goal.
+
+<p align="center">
+<img src=./images/2025-10-11/Single_Point_of_Failure.png width=300px height=250px>
+<p/>
+
+---
+## Part 3. The Paper's Solution
+
+-v-
+
+### A New Heuristic Distributed Method
+
+- Proposes a novel Heuristic Distributed Task Allocation algorithm.
+- Key Principle: Vehicles work collaboratively without a central server.
+- Direct Goal: To actively optimize the overall objective (e.g., minimize average rescue time).
+
+<p align="center">
+<img src=./images/2025-10-11/P2P_network.png width=450px height=380px>
+<p/>
+
+---
+## Part 4. The Key Concept
+
+-v-
+
+### The Concept of "Significance"
+
+**"Significance"**:
+- Significance measures a task's contribution to a vehicle's local cost.
+- It assesses how much the total rescue time would be reduced by switching a task from one vehicle to another.
+- This value drives the distributed decisions, ensuring vehicles always aim for the most beneficial assignment for the whole system.
+
+---
+## Part 5. The Two-Phase Algorithm: Phase 1
+
+-v-
+
+### Task Inclusion Phase
+
+- Individual Calculation: Each vehicle calculates which unassigned task can reduce the system's total cost the most.
+- Vehicles tentatively add the most advantageous tasks to their assignment list.
+
+```text
+                    Unassigned Tasks
+                           |
+                           |  Calculate Max Cost Reduction
+                           v
+                 Vehicle's Tentative List
+```
+
+---
+## Part 5. The Two-Phase Algorithm: Phase 2
+
+-v-
+
+### Consensus & Task Removal Phase
+
+- Local Communication: Vehicles share their Significance values with their neighbors.
+- Agreement: Vehicles reach an agreement on which vehicle is best suited for each task.
+- Tasks that other vehicles can handle better are removed, leading to the optimal distributed assignment.
+
+```
+Vehicle 1
+├─ Task List: [Task A, Task B, Task C]
+│  ├─ --> （Dotted Line: Local Communication） <- -> Vehicle 2
+│  └─ --> （Remove Task B）→ Task B → （Assign）→ Vehicle 2
+└─ Updated Task List: [Task A, Task C]
+
+Vehicle 2
+├─ Task List: [Task D, Task E] └─ Updated Task List: [Task D, Task E, Task B] 
+```
+
+---
+## Part 6. What Makes It Better?
+
+-v-
+
+### Key Strengths of the New Method
+
+1. Goal-Oriented Optimization: Directly minimizes the overall system objective (e.g., total time/survivors rescued).
+2. Robust Flexibility: Works with different communication network topologies.
+3. Handles Dynamics: Easily incorporates new survivors (tasks) found mid-mission.
+
+> It is a highly adaptive and scalable solution.
+
+---
+## Part 7. Conclusion
+
+-v-
+
+### A Practical and Smart Solution
+
+- This paper provides a practical, heuristic algorithm to solve a complex, NP-hard problem.
+- The concept of Significance enables efficient, decentralized decision-making.
+- Applying this method to Search and Rescue can save more lives through superior task management.
+> Heuristics + Distribution = Smarter Rescue.
+
+---
+# Thank You for Listening!
+                    </textarea>
+                </section>
+            </div>
+        </div>
+        <script src="../../mkslides-assets/reveal-js/dist/reveal.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/highlight/highlight.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/markdown/markdown.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/math/math.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/notes/notes.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/search/search.js"></script>
+        <script src="../../mkslides-assets/reveal-js/plugin/zoom/zoom.js"></script>
+
+        
+
+        <script>
+            Reveal.initialize({
+                
+                    
+                        history: true,
+                    
+                        slideNumber: "c/t",
+                    
+                        height: 720,
+                    
+                        width: 960,
+                    
+                        transition: "fade",
+                    
+                        transitionSpeed: "fast",
+                    
+                        center: false,
+                    
+                
+                plugins: [
+                    RevealMarkdown, // Must come before the other plugins so they can hook into the generated HTML.
+                    RevealHighlight,
+                    RevealMath.KaTeX,
+                    RevealNotes,
+                    RevealSearch,
+                    RevealZoom,
+
+                    
+                ],
+            });
+        </script>
+    </body>
+</html>
