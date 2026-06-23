@@ -23,8 +23,8 @@
 {{- end -}}
 
 {{- $music := slice -}}
-{{- if isset .Site.Data "music" -}}
-  {{- range .Site.Data.music -}}
+{{- if isset hugo.Data "music" -}}
+  {{- range hugo.Data.music -}}
     {{- $music = $music | append (dict
       "type" "music"
       "title" .title
@@ -41,8 +41,8 @@
 {{- end -}}
 
 {{- $photos := slice -}}
-{{- if isset .Site.Data "photos" -}}
-  {{- range .Site.Data.photos -}}
+{{- if isset hugo.Data "photos" -}}
+  {{- range hugo.Data.photos -}}
     {{- $src := .image -}}
     {{- $imgPath := strings.TrimPrefix "/" .image -}}
     {{- with resources.Get $imgPath -}}

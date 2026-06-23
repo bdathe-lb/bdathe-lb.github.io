@@ -2,12 +2,107 @@
 
 <h1>About</h1>
 
-<p>
-Welcome to my personal wiki. I use this space to document my learning notes on computer science fundamentals, 
-along with scenery photos and music notes.
-<a href="about/">(more)</a>
-</p>
-<br/>
+<div class="home-hero" id="home-hero">
+    <pre class="home-hero-screen" aria-hidden="true"><span class="home-hero-line"><span class="home-hero-prompt">~$</span> <span class="home-hero-typed" data-hero-typed></span><span class="home-hero-cursor">_</span></span></pre>
+    <p class="home-hero-fallback">
+    Bdathe — CS grad student, focused on UAV task allocation &amp; path planning.
+    A digital garden to consolidate notes, photos, and music.
+    <a href="about/">(more)</a>
+    </p>
+</div>
+
+<style>
+.home-hero {
+    margin: 0.2rem 0 1.4rem;
+}
+.home-hero-screen {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 1rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    min-height: 3.4em;
+}
+.home-hero-line { display: block; }
+/* live prompt: bright; committed history: dim & light — like a real shell */
+.home-hero-prompt {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+.home-hero-line--done .home-hero-prompt {
+    color: var(--secondary-color);
+    font-weight: normal;
+}
+.home-hero-out { color: var(--font-color); }
+.home-hero-cursor {
+    display: inline-block;
+    margin-left: 1px;
+    color: var(--primary-color);
+    animation: heroBlink 1s step-end infinite;
+}
+@keyframes heroBlink { 50% { opacity: 0; } }
+.home-hero-fallback { display: none; margin: 0; }
+@media (prefers-reduced-motion: reduce) {
+    .home-hero-screen { display: none; }
+    .home-hero-fallback { display: block; }
+}
+</style>
+
+<script>
+(function () {
+    var screen = document.querySelector('.home-hero-screen');
+    var typedEl = document.querySelector('[data-hero-typed]');
+    if (!screen || !typedEl) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // A short script of commands -> output, typed out like a real shell.
+    var steps = [
+        { cmd: 'whoami', out: 'Bdathe — CS grad student · UAV task allocation & path planning' },
+        { cmd: 'echo $MOTTO', out: 'What I cannot create, I do not understand.' }
+    ];
+
+    var lines = [];        // committed output lines (HTML)
+    var step = 0;
+    var typeSpeed = 55, outDelay = 450, nextDelay = 1100;
+
+    function render(typing) {
+        var html = lines.join('');
+        html += '<span class="home-hero-line"><span class="home-hero-prompt">~$</span> '
+              + '<span class="home-hero-typed">' + escapeHtml(typing) + '</span>'
+              + '<span class="home-hero-cursor">_</span></span>';
+        screen.innerHTML = html;
+    }
+    function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function typeCmd() {
+        if (step >= steps.length) { render(''); return; }
+        var cmd = steps[step].cmd, i = 0;
+        (function tick() {
+            render(cmd.slice(0, i));
+            if (i < cmd.length) { i++; setTimeout(tick, typeSpeed); }
+            else { setTimeout(showOut, outDelay); }
+        })();
+    }
+    function showOut() {
+        var s = steps[step];
+        lines.push('<span class="home-hero-line home-hero-line--done"><span class="home-hero-prompt">~$</span> '
+                 + escapeHtml(s.cmd) + '</span>');
+        lines.push('<span class="home-hero-line home-hero-out">' + escapeHtml(s.out) + '</span>');
+        step++;
+        render('');
+        setTimeout(typeCmd, nextDelay);
+    }
+
+    render('');
+    setTimeout(typeCmd, 500);
+})();
+</script>
 
 <h1>Latest posts</h1>
 
@@ -53,12 +148,12 @@ along with scenery photos and music notes.
 }
 </style>
 <div class="home-photo-grid">
-    {{ range first 3 (sort .Site.Data.photos "date" "desc") }}
+    {{ range first 3 (sort hugo.Data.photos "date" "desc") }}
         {{ $imgPath := strings.TrimPrefix "/" .image }}
         {{ $res := resources.Get $imgPath }}
         {{ $thumbSrc := .image }}
         {{ if $res }}
-            {{ if and (eq $res.ResourceType "image") (not (strings.HasSuffix (lower $res.RelPermalink) ".avif")) }}
+            {{ if eq $res.ResourceType "image" }}
                 {{ $thumb := $res.Fill "400x300 webp q80" }}
                 {{ $thumbSrc = $thumb.RelPermalink }}
             {{ else }}

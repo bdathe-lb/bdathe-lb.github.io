@@ -1,7 +1,7 @@
 baseURL = "https://www.bdathe.wiki/"
 title = "bdathe@home"
 theme = "hugo-theme-console"
-languageCode = "zh-cn"
+locale = "zh-cn"
 hasCJKLanguage = true
 
 [markup]
@@ -11,6 +11,8 @@ hasCJKLanguage = true
 
 [params]
   animateStyle = "animate-fade-up"
+  description = "Bdathe 的个人 wiki —— 计算机笔记、无人机任务分配与路径规划，以及摄影与音乐的数字花园。"
+  ogimage = "og-default.png"
 
 [[params.navlinks]]
   name = "about/"

@@ -4,12 +4,8 @@
 {{ if and (isset .Params "image") .Params.image }}
     {{ $image := .Page.Resources.GetMatch .Params.image }}
     {{ with $image }}
-        {{ if eq .MediaType.SubType "avif" }}
-            {{ printf `<img src="%s" alt="%s" class="img-responsive gallery-image">` .RelPermalink .Title | safeHTML }}
-        {{ else }}
-            {{ $thumb := .Resize "1000x" }}
-            {{ printf `<img src="%s" alt="%s" class="img-responsive gallery-image">` $thumb.RelPermalink .Title | safeHTML }}
-        {{ end }}
+        {{ $img := cond (gt .Width 1000) (.Resize "1000x webp q82") . }}
+        {{ printf `<img src="%s" alt="%s" class="img-responsive gallery-image">` $img.RelPermalink .Title | safeHTML }}
     {{end}}
 {{ end }}
 

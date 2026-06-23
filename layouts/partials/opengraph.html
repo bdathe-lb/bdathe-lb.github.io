@@ -1,19 +1,19 @@
 <meta property="og:title" content="{{ .Title }}" />
-<meta property="og:description" content="{{ with .Description }}{{ . }}{{ else }}{{if .IsPage}}{{ with .Site.Params.description }}{{ . }}{{ end }}{{ end }}{{ end }}" />
+<meta property="og:description" content="{{ with .Description }}{{ . }}{{ else }}{{ with .Site.Params.description }}{{ . }}{{ end }}{{ end }}" />
 <meta property="og:type" content="{{ if .IsPage }}article{{ else }}website{{ end }}" />
 <meta property="og:url" content="{{ .Permalink }}" />
 
+{{- $ogimage := "" }}
 {{- with .Params.image }}
-{{ $image := $.Resources.GetMatch . }}
-{{ with $image }}
-  {{ if eq .MediaType.SubType "avif" }}
-<meta property="og:image" content="{{ .Permalink }}">
-  {{ else }}
-    {{ $thumb := .Resize "400x" }}
-<meta property="og:image" content="{{ $thumb.Permalink }}">
-  {{ end }}
-{{ end }}
-{{ end }}
+  {{- with $.Resources.GetMatch . }}
+    {{- $thumb := cond (gt .Width 1200) (.Resize "1200x webp q82") . }}
+    {{- $ogimage = $thumb.Permalink }}
+  {{- end }}
+{{- end }}
+{{- if not $ogimage }}{{ with .Site.Params.ogimage }}{{ $ogimage = . | absURL }}{{ end }}{{ end }}
+{{- with $ogimage }}
+<meta property="og:image" content="{{ . }}">
+{{- end }}
 
 {{- $iso8601 := "2006-01-02T15:04:05-07:00" -}}
 {{- if .IsPage }}

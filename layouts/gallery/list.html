@@ -110,18 +110,24 @@
 </style>
 
 <div class="photo-grid">
-    {{ range sort .Site.Data.photos "date" "desc" }}
+    {{ range sort hugo.Data.photos "date" "desc" }}
     {{ $imgPath := strings.TrimPrefix "/" .image }}
     {{ $res := resources.Get $imgPath }}
     {{ $fullSrc := .image }}
     {{ $thumbSrc := .image }}
     {{ if $res }}
         {{ $fullSrc = $res.RelPermalink }}
-        {{ if and (eq $res.ResourceType "image") (not (strings.HasSuffix (lower $res.RelPermalink) ".avif")) }}
+        {{ if eq $res.ResourceType "image" }}
             {{ $thumb := $res.Fill "500x500 webp q80" }}
             {{ $thumbSrc = $thumb.RelPermalink }}
-        {{ else }}
-            {{ $thumbSrc = $res.RelPermalink }}
+            {{/* Serve a downscaled webp in the lightbox instead of the multi-MB original */}}
+            {{ if gt $res.Width 1600 }}
+                {{ $full := $res.Resize "1600x webp q82" }}
+                {{ $fullSrc = $full.RelPermalink }}
+            {{ else }}
+                {{ $full := $res.Resize (printf "%dx webp q82" $res.Width) }}
+                {{ $fullSrc = $full.RelPermalink }}
+            {{ end }}
         {{ end }}
     {{ end }}
     <div class="photo-item" onclick="openLightbox('{{ $fullSrc }}', '{{ .caption }}')">

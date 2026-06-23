@@ -4,7 +4,7 @@
 {{ .Content }}
 
 {{ $genres := slice }}
-{{ range .Site.Data.music }}
+{{ range hugo.Data.music }}
     {{ if .genre }}
         {{ $genres = $genres | append .genre }}
     {{ end }}
@@ -209,7 +209,7 @@ html.theme-dark .music-card iframe {
 </div>
 
 <div class="music-grid">
-{{ range sort .Site.Data.music "date" "desc" }}
+{{ range sort hugo.Data.music "date" "desc" }}
     <div class="music-card" data-genre="{{ .genre }}">
         <div class="music-card-inner">
             {{ if or .spotify .qqmusic }}

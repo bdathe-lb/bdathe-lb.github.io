@@ -1,16 +1,15 @@
+{{- $twimage := "" }}
 {{- with .Params.image }}
-{{ $image := $.Resources.GetMatch . }}
-{{ with $image }}
-{{ if eq .MediaType.SubType "avif" }}
+  {{- with $.Resources.GetMatch . }}
+    {{- $thumb := cond (gt .Width 1200) (.Resize "1200x webp q82") . }}
+    {{- $twimage = $thumb.Permalink }}
+  {{- end }}
+{{- end }}
+{{- if not $twimage }}{{ with .Site.Params.ogimage }}{{ $twimage = . | absURL }}{{ end }}{{ end }}
+{{- with $twimage }}
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:image" content="{{ .Permalink }}">
-{{ else }}
-{{ $thumb := .Resize "400x" }}
-<meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:image" content="{{ $thumb.Permalink }}">
-{{ end }}
-{{ end }}
-{{ end }}
+<meta name="twitter:image" content="{{ . }}">
+{{- end }}
 
 <meta name="twitter:title" content="{{ .Title }}"/>
 <meta name="twitter:description" content="{{ with .Description }}{{ . }}{{ else }}{{if .IsPage}}{{ .Summary }}{{ else }}{{ with .Site.Params.description }}{{ . }}{{ end }}{{ end }}{{ end -}}"/>
