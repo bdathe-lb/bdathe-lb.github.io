@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8"><title>poem diag</title>
+<style>
+  :root { --primary-color:#1a95e0; --secondary-color:#727578; --font-color:#151515; --code-bg-color:#e8eff2; }
+  body { background:#fff; color:var(--font-color); font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; margin:0; }
+  .poems-index { max-width:760px; margin:0 auto; padding:2rem; }
+
+  /* DIAGNOSTIC OUTLINES */
+  .poem-content { margin-top:1rem; outline:2px solid #1abf3a; }      /* GREEN = poem-content */
+  .poem-text.vertical { outline:2px dashed #e0002b; background:rgba(224,0,43,.06); }  /* RED = vertical block */
+
+  .poem-controls { display:flex; justify-content:center; margin-bottom:1.2rem; }
+  .poem-orient-btn { background:transparent; border:1px solid var(--secondary-color); color:var(--secondary-color); padding:.25rem .9rem; border-radius:20px; font-size:.8rem; cursor:pointer; }
+  .poem-orient-btn[aria-pressed="true"] { color:var(--primary-color); border-color:var(--primary-color); }
+
+  .poem-text { width:min(100%,420px); margin:0 auto 3rem; padding:2rem 0; border-top:1px solid var(--code-bg-color); border-bottom:1px solid var(--code-bg-color); font-size:1.25rem; line-height:2.15; text-align:center; }
+  .poem-section + .poem-section { margin-top:1.4rem; }
+  .poem-section p { margin:0; text-align:left; text-indent:2em; }
+
+  .poem-text.vertical { writing-mode:vertical-rl; width:fit-content; max-width:100%; height:300px; margin:0 auto 3rem; padding:1.5rem; border:0; text-align:start; overflow-x:auto; overflow-y:hidden; box-sizing:border-box; }
+  .poem-text.vertical .poem-section + .poem-section { margin-top:0; margin-right:1.4rem; }
+  .poem-text.vertical .poem-section p { text-indent:1em; }
+
+  .poem-notes { max-width:620px; margin:0 auto; line-height:1.85; }
+  .poem-notes h3 { color:var(--primary-color); }
+  .footer { clear:both; margin-top:100px; padding-top:10px; border-top:1px solid var(--secondary-color); color:var(--secondary-color); }
+</style></head>
+<body>
+<div class="poems-index">
+<p>点「竖排」。绿框=poem-content,应包住红框(竖排)+释义;页脚应在绿框下方。</p>
+<div class="poem-content">
+  <div class="poem-controls">
+    <button class="poem-orient-btn" type="button" aria-pressed="false">竖排</button>
+  </div>
+  <section class="poem-text">
+    <div class="poem-section"><p>晚日寒鸦一片愁。柳塘新绿却温柔。若教眼底无离恨，不信人间有白头。</p></div>
+    <div class="poem-section"><p>肠已断，泪难收。相思重上小红楼。情知已被山遮断，频倚阑干不自由。</p></div>
+  </section>
+  <section class="poem-notes">
+    <h3>释义</h3>
+    <p>落日里寒鸦归巢勾起我一片思愁。只有池塘柳树发出嫩绿的新芽显出温柔。如果不是眼下亲自遭遇离愁别恨的折磨，根本不会相信这世上真会有人伤心白头。</p>
+  </section>
+</div>
+<div class="footer">2026 &copy; Bdathe — footer</div>
+</div>
+<script>
+document.querySelectorAll('.poem-orient-btn').forEach((btn)=>{
+  btn.addEventListener('click',(e)=>{e.preventDefault();e.stopPropagation();
+    const t=btn.closest('.poem-content').querySelector('.poem-text');
+    const v=t.classList.toggle('vertical');
+    btn.setAttribute('aria-pressed',v?'true':'false');btn.textContent=v?'横排':'竖排';});
+});
+</script>
+</body></html>
