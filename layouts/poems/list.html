@@ -26,19 +26,21 @@
             <div class="poem-controls">
                 <button class="poem-orient-btn" type="button" aria-pressed="false">竖排</button>
             </div>
-            <section class="poem-text" aria-label="{{ .title }} 原文">
-                {{ with .sections }}
-                    {{ range . }}
-                    <div class="poem-section">
-                        <p>{{ .text }}</p>
-                    </div>
+            <div class="poem-text-stage">
+                <section class="poem-text" aria-label="{{ .title }} 原文">
+                    {{ with .sections }}
+                        {{ range . }}
+                        <div class="poem-section">
+                            <p>{{ .text }}</p>
+                        </div>
+                        {{ end }}
+                    {{ else }}
+                        {{ range .lines }}
+                        <span class="poem-line">{{ . }}</span>
+                        {{ end }}
                     {{ end }}
-                {{ else }}
-                    {{ range .lines }}
-                    <span class="poem-line">{{ . }}</span>
-                    {{ end }}
-                {{ end }}
-            </section>
+                </section>
+            </div>
 
             {{ with .interpretation }}
             <section class="poem-notes">
@@ -142,9 +144,17 @@
     border-color: var(--primary-color);
 }
 
+.poem-text-stage {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+    margin: 0 auto 3rem;
+}
+
 .poem-text {
     width: min(100%, 420px);
-    margin: 0 auto 3rem;
+    margin: 0;
     padding: 2rem 0;
     border-top: 1px solid var(--code-bg-color);
     border-bottom: 1px solid var(--code-bg-color);
@@ -174,7 +184,7 @@
     width: fit-content;
     max-width: 100%;
     height: 380px;               /* fixed height -> long lines wrap into short columns, box stays contained */
-    margin: 0 auto 3rem;
+    margin: 0;
     padding: 1.5rem;
     border: 0;
     border-right: 1px solid var(--code-bg-color);
@@ -226,12 +236,13 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion) return;
 
     document.querySelectorAll('.poem-entry').forEach((entry) => {
         const summary = entry.querySelector('.poem-summary');
         const content = entry.querySelector('.poem-content');
         if (!summary || !content) return;
+
+        if (reduceMotion) return;
 
         summary.addEventListener('click', (event) => {
             event.preventDefault();
@@ -246,7 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const isOpen = entry.open;
             content.style.overflow = 'hidden';
 
-            const cleanup = () => {
+            const cleanup = (animation) => {
+                animation.cancel();
                 content.style.height = '';
                 content.style.opacity = '';
                 content.style.overflow = '';
@@ -266,9 +278,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 animation.finished.then(
                     () => {
                         entry.open = false;
-                        cleanup();
+                        cleanup(animation);
                     },
-                    cleanup
+                    () => cleanup(animation)
                 );
                 return;
             }
@@ -283,7 +295,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 { duration: 260, easing: 'ease', fill: 'forwards' }
             );
 
-            animation.finished.then(cleanup, cleanup);
+            animation.finished.then(
+                () => cleanup(animation),
+                () => cleanup(animation)
+            );
         });
     });
 
@@ -299,6 +314,19 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = vertical ? '横排' : '竖排';
         });
     });
+
+    const openLinkedPoem = () => {
+        if (!window.location.hash.startsWith('#poem-')) return;
+        const entry = document.querySelector(window.location.hash);
+        if (!entry || !entry.classList.contains('poem-entry')) return;
+        entry.open = true;
+        window.requestAnimationFrame(() => {
+            entry.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+        });
+    };
+
+    openLinkedPoem();
+    window.addEventListener('hashchange', openLinkedPoem);
 });
 </script>
 {{ end }}

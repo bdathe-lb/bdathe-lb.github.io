@@ -59,6 +59,34 @@
   {{- end -}}
 {{- end -}}
 
+{{- $poems := slice -}}
+{{- if isset hugo.Data "poems" -}}
+  {{- range sort hugo.Data.poems "date" "desc" -}}
+    {{- $lines := slice -}}
+    {{- with .sections -}}
+      {{- range . -}}
+        {{- $lines = $lines | append .text -}}
+      {{- end -}}
+    {{- else -}}
+      {{- range .lines -}}
+        {{- $lines = $lines | append . -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $poems = $poems | append (dict
+      "type" "poem"
+      "title" .title
+      "slug" .slug
+      "date" (printf "%v" .date)
+      "author" .author
+      "dynasty" .dynasty
+      "excerpt" .excerpt
+      "content" (delimit $lines " ")
+      "interpretation" .interpretation
+      "url" (printf "/poems/#poem-%s" .slug)
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
 <div class="site-terminal-overlay" id="site-terminal-overlay" aria-hidden="true">
     <section class="site-terminal-panel" role="dialog" aria-modal="true" aria-label="bdathe shell">
         <div class="site-terminal-header">
@@ -440,11 +468,13 @@ window.bdatheTerminalData = {
         about: '/about/',
         posts: '/posts/',
         slides: '/slides/',
+        poems: '/poems/',
         music: '/music/',
         photos: '/photos/'
     },
     about: {{ $aboutContent | jsonify | safeJS }},
     posts: {{ $posts | jsonify | safeJS }},
+    poems: {{ $poems | jsonify | safeJS }},
     music: {{ $music | jsonify | safeJS }},
     photos: {{ $photos | jsonify | safeJS }}
 };
@@ -472,7 +502,9 @@ document.addEventListener('DOMContentLoaded', () => {
         about: 'Show a short introduction',
         posts: 'List public posts',
         post: 'Preview a post: post <slug>',
-        open: 'Open a section or post: open <target>',
+        poems: 'List collected poems',
+        poem: 'Preview a poem: poem <slug>',
+        open: 'Open a section, post, or poem: open <target>',
         search: 'Search site content: search <keyword>',
         random: 'Randomly explore the site',
         now: 'Recommend music or a photo',
@@ -614,6 +646,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const findPoem = (target) => {
+        const query = normalize(target);
+        return data.poems.find((poem) => {
+            return normalize(poem.slug) === query || normalize(poem.title) === query;
+        });
+    };
+
     const previewPost = (post) => {
         printLine(post.title, 'site-terminal-success');
         printLine(post.date);
@@ -632,6 +671,14 @@ document.addEventListener('DOMContentLoaded', () => {
         printLine(`${item.title} (${item.date})`, 'site-terminal-success');
         if (item.caption) printLine(excerpt(item.caption));
         if (item.image) printImage(item.image, item.title);
+        printLinkLine('[open] ', item.url, item.url);
+    };
+
+    const previewPoem = (item) => {
+        printLine(item.title, 'site-terminal-success');
+        printLine([item.author, item.dynasty].filter(Boolean).join(' · '));
+        printLine(excerpt(item.content || item.excerpt, 220));
+        if (item.interpretation) printLine(`释义: ${excerpt(item.interpretation, 180)}`, 'site-terminal-muted');
         printLinkLine('[open] ', item.url, item.url);
     };
 
@@ -661,6 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     { mode: 'dr-x', name: 'about', info: 'profile and contact', path: data.sections.about, url: data.sections.about },
                     { mode: 'dr-x', name: 'posts', info: `${data.posts.length} public posts`, path: data.sections.posts, url: data.sections.posts },
                     { mode: 'dr-x', name: 'slides', info: 'mkslides reports', path: data.sections.slides, url: data.sections.slides },
+                    { mode: 'dr-x', name: 'poems', info: `${data.poems.length} poems`, path: data.sections.poems, url: data.sections.poems },
                     { mode: 'dr-x', name: 'music', info: `${data.music.length} tracks`, path: data.sections.music, url: data.sections.music },
                     { mode: 'dr-x', name: 'photos', info: `${data.photos.length} photos`, path: data.sections.photos, url: data.sections.photos }
                 ]
@@ -678,6 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 [
                     { module: 'posts', value: `${data.posts.length} public posts`, path: data.sections.posts },
                     { module: 'slides', value: 'mkslides reports', path: data.sections.slides },
+                    { module: 'poems', value: `${data.poems.length} poems`, path: data.sections.poems },
                     { module: 'music', value: `${data.music.length} tracks`, path: data.sections.music },
                     { module: 'photos', value: `${data.photos.length} photos`, path: data.sections.photos },
                     { module: 'shell', value: 'interactive overlay ready', path: 'Ctrl+K' },
@@ -695,6 +744,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (data.posts.length > 3) printLine(`|   \`-- ... ${data.posts.length - 3} more`);
             printLine('|-- slides/ (mkslides)');
+            printLine(`|-- poems/ (${data.poems.length})`);
             printLine(`|-- music/ (${data.music.length})`);
             printLine(`|-- photos/ (${data.photos.length})`);
             printLine('`-- shell/ (overlay)');
@@ -711,7 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     { key: 'host', value: 'bdathe.wiki' },
                     { key: 'role', value: 'CS graduate student' },
                     { key: 'focus', value: 'UAV task allocation / path planning' },
-                    { key: 'modules', value: 'posts, slides, music, photos, shell' },
+                    { key: 'modules', value: 'posts, slides, poems, music, photos, shell' },
                     { key: 'theme', value: document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light' },
                     { key: 'hint', value: 'try: search <keyword>, random, now' }
                 ]
@@ -735,6 +785,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     name: `${track.title} - ${track.artist}`,
                     path: data.sections.music,
                     url: data.sections.music
+                });
+            }
+
+            if (data.poems.length > 0) {
+                const poem = data.poems[0];
+                rows.push({
+                    type: 'poem',
+                    date: poem.date || '',
+                    name: `${poem.title} - ${poem.author}`,
+                    path: poem.url,
+                    url: poem.url
                 });
             }
 
@@ -803,9 +864,44 @@ document.addEventListener('DOMContentLoaded', () => {
             previewPost(post);
         },
 
+        poems: () => {
+            if (data.poems.length === 0) {
+                printLine('No poems found.');
+                return;
+            }
+            printTable(
+                [
+                    { key: 'date', label: 'DATE', width: '6.8rem', optional: true },
+                    { key: 'slug', label: 'SLUG', width: '11rem', className: 'site-terminal-muted' },
+                    { key: 'title', label: 'TITLE', width: 'minmax(0, 1fr)', link: true },
+                    { key: 'author', label: 'AUTHOR', width: '7rem', optional: true }
+                ],
+                data.poems.map((poem) => ({
+                    date: poem.date,
+                    slug: poem.slug,
+                    title: poem.title,
+                    author: poem.author,
+                    url: poem.url
+                }))
+            );
+        },
+
+        poem: (args) => {
+            if (args.length === 0) {
+                printLine('Usage: poem <slug>', 'site-terminal-error');
+                return;
+            }
+            const poem = findPoem(args.join(' '));
+            if (!poem) {
+                printLine(`Poem not found: ${args.join(' ')}`, 'site-terminal-error');
+                return;
+            }
+            previewPoem(poem);
+        },
+
         open: (args) => {
             if (args.length === 0) {
-                printLine('Usage: open <home|about|posts|slides|music|photos|post-slug>', 'site-terminal-error');
+                printLine('Usage: open <section|post-slug|poem-slug>', 'site-terminal-error');
                 return;
             }
             const target = args.join(' ');
@@ -817,6 +913,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const post = findPost(target);
             if (post) {
                 window.location.href = post.url;
+                return;
+            }
+            const poem = findPoem(target);
+            if (poem) {
+                window.location.href = poem.url;
                 return;
             }
             printLine(`Unknown target: ${target}`, 'site-terminal-error');
@@ -842,6 +943,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const haystack = normalize(`${item.title} ${item.artist} ${item.album} ${item.genre} ${item.summary}`);
                 if (haystack.includes(needle)) {
                     results.push({ type: 'music', name: `${item.title} - ${item.artist}`, info: excerpt(item.summary, 72), path: item.url, url: item.url });
+                }
+            });
+
+            data.poems.forEach((item) => {
+                const haystack = normalize(`${item.title} ${item.slug} ${item.author} ${item.dynasty} ${item.excerpt} ${item.content} ${item.interpretation}`);
+                if (haystack.includes(needle)) {
+                    results.push({ type: 'poem', name: `${item.title} - ${item.author}`, info: excerpt(item.excerpt || item.content, 72), path: item.url, url: item.url });
                 }
             });
 
@@ -873,6 +981,7 @@ document.addEventListener('DOMContentLoaded', () => {
         random: () => {
             const pool = [
                 ...data.posts,
+                ...data.poems,
                 ...data.music,
                 ...data.photos
             ];
@@ -882,6 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const item = randomItem(pool);
             if (item.type === 'post') previewPost(item);
+            if (item.type === 'poem') previewPoem(item);
             if (item.type === 'music') previewMusic(item);
             if (item.type === 'photo') previewPhoto(item);
         },
@@ -977,10 +1087,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const commandName = aliases[normalize(parts[0])] || normalize(parts[0]);
-        if (commandName === 'post' || commandName === 'open') {
+        if (commandName === 'post' || commandName === 'poem' || commandName === 'open') {
             const sectionNames = commandName === 'open' ? Object.keys(data.sections) : [];
-            const postSlugs = data.posts.map((post) => post.slug);
-            const matches = [...sectionNames, ...postSlugs].filter((name) => normalize(name).startsWith(current));
+            const postSlugs = commandName === 'poem' ? [] : data.posts.map((post) => post.slug);
+            const poemSlugs = commandName === 'post' ? [] : data.poems.map((poem) => poem.slug);
+            const matches = [...sectionNames, ...postSlugs, ...poemSlugs].filter((name) => normalize(name).startsWith(current));
             if (matches.length === 1) input.value = `${parts[0]} ${matches[0]}`;
             if (matches.length > 1) printLine(matches.join('    '));
         }
