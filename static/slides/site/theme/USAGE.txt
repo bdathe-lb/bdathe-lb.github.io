@@ -48,3 +48,15 @@ Slides Theme Notes
 - 算法页：代码块配合 two-col，另一列解释输入、过程和效果。
 - 证明页：用 theorem 放命题，用 proof 放推导步骤。
 - 实验页：用 result 放最重要的数字或结论。
+
+过渡与动效
+----------
+
+默认是「编辑式溶解」：页间淡入淡出 + 轻微位移/缩放，进入当前页后标题与列表错落入场。
+
+- 调力度：改 theme/slides.css 顶部的 --enter-y / --exit-y / --enter-scale / --slide-duration。
+- 逐步显现：给列表项加 fragment，例如：
+  - 普通：<!-- .element: class="fragment" -->
+  - 上浮：<!-- .element: class="fragment fade-up" -->
+- 单页覆盖：<!-- .slide: data-transition="slide" -->
+- 更强方向感：mkslides.yml 里 transition: slide（见 slides.css 末尾注释）。

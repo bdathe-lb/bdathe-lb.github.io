@@ -23,6 +23,27 @@
     --danger: #b42318;
     --danger-bg: #fff0ef;
     --shadow-soft: 0 8px 24px rgba(16, 24, 40, 0.08);
+
+    /*
+     * Motion system (editorial dissolve + content enter)
+     * --ease-out-expo: 快进慢出，翻页落定感
+     * --ease-out-soft: 内容入场稍柔和
+     */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-out-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-out-soft: cubic-bezier(0.33, 1, 0.68, 1);
+    --ease-in-out: cubic-bezier(0.45, 0, 0.2, 1);
+
+    --slide-duration: 0.48s;
+    --content-duration: 0.5s;
+    --fragment-duration: 0.34s;
+    --progress-duration: 0.55s;
+
+    /* 进出位移 / 缩放：克制，组会场景不抢内容 */
+    --exit-y: -0.55rem;
+    --enter-y: 0.7rem;
+    --exit-scale: 0.985;
+    --enter-scale: 0.972;
 }
 
 section.has-dark-background,
@@ -593,10 +614,265 @@ html.reveal-print .reveal .slides section>section:has(h2) {
 }
 
 .reveal .progress span {
-    -webkit-transition: width 800ms cubic-bezier(0.26, 0.86, 0.44, 0.985);
-    -moz-transition: width 800ms cubic-bezier(0.26, 0.86, 0.44, 0.985);
-    transition: width 800ms cubic-bezier(0.26, 0.86, 0.44, 0.985);
+    -webkit-transition: transform var(--progress-duration) var(--ease-out-expo);
+    -moz-transition: transform var(--progress-duration) var(--ease-out-expo);
+    transition: transform var(--progress-duration) var(--ease-out-expo);
 }
+
+/*********************************************
+ * MOTION SYSTEM — editorial dissolve
+ *
+ * 纯 opacity fade 容易「糊一下就换页」。这里叠加：
+ * 1) 页间：透明度 + 轻微缩放 + 方向性位移（past 上抬 / future 上浮）
+ * 2) 页内：进入 .present 后，子元素错落入场
+ * 3) fragment：同样用缓出曲线
+ *
+ * 备选风格见文件末尾注释（push / minimal）。
+ *********************************************/
+
+/* Base section transitions (slide / convex / etc. also benefit) */
+.reveal .slides > section,
+.reveal .slides > section > section {
+    transition:
+        transform-origin var(--slide-duration) var(--ease-out-expo),
+        transform var(--slide-duration) var(--ease-out-expo),
+        visibility var(--slide-duration) var(--ease-out-expo),
+        opacity var(--slide-duration) var(--ease-out-expo);
+    will-change: transform, opacity;
+}
+
+/*
+ * Override Reveal's stock fade (opacity-only, transform:none).
+ * Past exits slightly up+shrink; future enters from slightly below+shrink.
+ */
+.reveal .slides section[data-transition="fade"],
+.reveal.fade .slides section:not([data-transition]),
+.reveal.fade .slides > section > section:not([data-transition]) {
+    transition:
+        opacity var(--slide-duration) var(--ease-out-expo),
+        transform var(--slide-duration) var(--ease-out-expo),
+        visibility var(--slide-duration) var(--ease-out-expo) !important;
+}
+
+.reveal.fade .slides > section.past,
+.reveal.fade .slides > section > section.past,
+.reveal .slides section[data-transition="fade"].past {
+    opacity: 0;
+    transform: translateY(var(--exit-y)) scale(var(--exit-scale));
+}
+
+.reveal.fade .slides > section.future,
+.reveal.fade .slides > section > section.future,
+.reveal .slides section[data-transition="fade"].future {
+    opacity: 0;
+    transform: translateY(var(--enter-y)) scale(var(--enter-scale));
+}
+
+.reveal.fade .slides > section.present,
+.reveal.fade .slides > section > section.present,
+.reveal .slides section[data-transition="fade"].present {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Vertical stacks: stronger Y travel, less scale (reads as "down" not "zoom") */
+.reveal.fade .slides > section > section.past {
+    transform: translateY(calc(var(--exit-y) * 2.2)) scale(0.99);
+}
+
+.reveal.fade .slides > section > section.future {
+    transform: translateY(calc(var(--enter-y) * 2.4)) scale(0.99);
+}
+
+/* Speed presets keep the curve */
+.reveal[data-transition-speed="fast"] .slides section {
+    transition-duration: 0.32s;
+    transition-timing-function: var(--ease-out-expo);
+}
+
+.reveal[data-transition-speed="slow"] .slides section {
+    transition-duration: 0.85s;
+    transition-timing-function: var(--ease-out-expo);
+}
+
+.reveal .slide-background {
+    transition:
+        opacity var(--slide-duration) var(--ease-out-expo),
+        transform var(--slide-duration) var(--ease-out-expo),
+        visibility var(--slide-duration) var(--ease-out-expo);
+}
+
+.reveal[data-transition-speed="fast"] > .backgrounds .slide-background {
+    transition-duration: 0.32s;
+    transition-timing-function: var(--ease-out-expo);
+}
+
+.reveal[data-transition-speed="slow"] > .backgrounds .slide-background {
+    transition-duration: 0.85s;
+    transition-timing-function: var(--ease-out-expo);
+}
+
+/* ---------- Content enter: only when a slide becomes present ---------- */
+@keyframes r-content-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.55rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/*
+ * Direct children of the active section (not fragments — those have their own motion).
+ * Stagger gives a light editorial rhythm without looking like a marketing site.
+ */
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):not(br):not(hr) {
+    animation: r-content-enter var(--content-duration) var(--ease-out-soft) both;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(1) {
+    animation-delay: 0.02s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(2) {
+    animation-delay: 0.07s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(3) {
+    animation-delay: 0.12s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(4) {
+    animation-delay: 0.16s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(5) {
+    animation-delay: 0.2s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(n + 6) {
+    animation-delay: 0.24s;
+}
+
+/* Nested list items: gentle cascade after parent appears */
+.reveal:not(.overview) .slides section.present > ul > li,
+.reveal:not(.overview) .slides section.present > ol > li {
+    animation: r-content-enter calc(var(--content-duration) * 0.9) var(--ease-out-soft) both;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(1),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(2),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(3),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(4),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(4) {
+    animation-delay: 0.24s;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(n + 5),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(n + 5) {
+    animation-delay: 0.28s;
+}
+
+/* Fragments */
+.reveal .fragment {
+    transition:
+        opacity var(--fragment-duration) var(--ease-out-soft),
+        transform var(--fragment-duration) var(--ease-out-soft),
+        visibility var(--fragment-duration) var(--ease-out-soft),
+        color var(--fragment-duration) var(--ease-out-soft),
+        background-color var(--fragment-duration) var(--ease-out-soft);
+}
+
+.reveal .fragment.fade-up {
+    transform: translateY(0.6rem);
+}
+
+.reveal .fragment.fade-up.visible {
+    transform: translateY(0);
+}
+
+.reveal .fragment.disabled {
+    transition: none;
+}
+
+/* Accessibility + print: no motion */
+@media (prefers-reduced-motion: reduce) {
+    .reveal .slides > section,
+    .reveal .slides > section > section,
+    .reveal .slides section[data-transition="fade"],
+    .reveal.fade .slides section:not([data-transition]),
+    .reveal.fade .slides > section > section:not([data-transition]),
+    .reveal .fragment,
+    .reveal .slide-background,
+    .reveal .progress span {
+        transition-duration: 0.01ms !important;
+        animation: none !important;
+    }
+
+    .reveal:not(.overview) .slides section.present > :not(.fragment):not(section),
+    .reveal:not(.overview) .slides section.present > ul > li,
+    .reveal:not(.overview) .slides section.present > ol > li {
+        animation: none !important;
+    }
+
+    .reveal.fade .slides > section.past,
+    .reveal.fade .slides > section.future,
+    .reveal.fade .slides > section > section.past,
+    .reveal.fade .slides > section > section.future {
+        transform: none;
+    }
+}
+
+@media print {
+    .reveal .slides section,
+    .reveal .fragment,
+    .reveal:not(.overview) .slides section.present > * {
+        animation: none !important;
+        transition: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+/*
+ * ---- Alternative presets (manual) ----
+ *
+ * A) Push (directional, more “deck-like”)
+ *    In mkslides.yml: transition: slide
+ *    Then uncomment:
+ *
+ * .reveal.slide .slides > section.past {
+ *     transform: translateX(-22%) scale(0.97);
+ *     opacity: 0;
+ * }
+ * .reveal.slide .slides > section.future {
+ *     transform: translateX(22%) scale(0.97);
+ *     opacity: 0;
+ * }
+ *
+ * B) Minimal (only opacity, no content enter)
+ *    Set --enter-y/exit-y to 0, --enter-scale/--exit-scale to 1,
+ *    and comment out the "Content enter" block above.
+ *
+ * C) Per-slide override in Markdown:
+ *    <!-- .slide: data-transition="slide" data-transition-speed="fast" -->
+ *    <!-- .element: class="fragment fade-up" -->
+ */
 
 .reveal .slide-number {
     color: #2a76dd;

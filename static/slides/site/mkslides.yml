@@ -21,6 +21,7 @@ index:
         - '2025-11-20': 2025-11-20_meeting.md
         - '2025-12-12': 2025-12-12_meeting.md
         - '2026-01-07': 2026-01-07_meeting.md
+        - '2026-07-20': 2026-07-20_meeting.md
 
 # Configuration for the slides
 slides:
@@ -66,9 +67,12 @@ slides:
 
 # Options to be passed to reveal.js: options in yaml format, they will be
 # translated to JSON automatically (see https://revealjs.com/config/)
+# Motion look & feel lives mainly in theme/slides.css (editorial dissolve +
+# content enter). Built-in types: none | fade | slide | convex | concave | zoom.
 revealjs:
   height: 720
   width: 960
-  transition: fade 
-  transitionSpeed: fast
+  transition: fade
+  transitionSpeed: default
+  backgroundTransition: fade
   center: false
