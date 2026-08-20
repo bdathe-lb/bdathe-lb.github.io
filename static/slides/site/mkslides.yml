@@ -17,11 +17,6 @@ index:
     - 'slides':
       - 'meetings':
         - '2025-10-11': 2025-10-11_meeting.md
-        - '2025-10-27': 2025-10-27_meeting.md
-        - '2025-11-20': 2025-11-20_meeting.md
-        - '2025-12-12': 2025-12-12_meeting.md
-        - '2026-01-07': 2026-01-07_meeting.md
-        - '2026-07-20': 2026-07-20_meeting.md
 
 # Configuration for the slides
 slides:

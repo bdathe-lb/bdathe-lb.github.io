@@ -1,0 +1,9 @@
+# 橱窗里的讲稿。工房在 ~/reports，这里只列要公开的。
+#
+#   group   货架名（讲页上那一行）
+#   date    封面日期
+#   file    编好的 html，相对 ~/reports/site/slides/
+
+- group: meetings
+  date: "2025-10-11"
+  file: meetings/2025-10-11_meeting.html

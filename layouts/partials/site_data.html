@@ -1,0 +1,62 @@
+{{/* Everything the ⌘K palette, the hero and the 行迹 axis need, serialised
+     once per page. Kept deliberately small — titles, dates, one line each. */}}
+
+{{- $sections := slice -}}
+{{- range .Site.Params.nav -}}
+  {{- $sections = $sections | append (dict "name" .name "latin" .latin "url" (.url | relURL)) -}}
+{{- end -}}
+{{- $sections = $sections | append (dict "name" "关于" "latin" "about" "url" ("/about/" | relURL)) -}}
+
+{{- $writing := slice -}}
+{{- with .Site.GetPage "/posts" -}}
+  {{- range where .Pages ".Params.private" "!=" true -}}
+    {{- $writing = $writing | append (dict
+        "title" .Title
+        "date" (.Date.Format "2006-01-02")
+        "summary" (.Params.summary | default (.Summary | plainify | truncate 90))
+        "kind" (.Params.form | default "essay")
+        "url" .RelPermalink) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $poemsURL := "/poems/" | relURL -}}
+{{- $poems := slice -}}
+{{- range hugo.Data.poems -}}
+  {{- $poems = $poems | append (dict
+      "title" .title
+      "author" .author
+      "excerpt" .excerpt
+      "date" (string .date)
+      "url" (printf "%s#%s" $poemsURL .slug)) -}}
+{{- end -}}
+
+{{- $musicURL := "/music/" | relURL -}}
+{{- $music := slice -}}
+{{- range hugo.Data.music -}}
+  {{- $music = $music | append (dict
+      "title" .title
+      "artist" .artist
+      "summary" .summary
+      "date" (string .date)
+      "url" $musicURL) -}}
+{{- end -}}
+
+{{- $photosURL := "/photos/" | relURL -}}
+{{- $photos := slice -}}
+{{- range hugo.Data.photos -}}
+  {{- $photos = $photos | append (dict
+      "title" .title
+      "caption" .caption
+      "date" (string .date)
+      "url" $photosURL) -}}
+{{- end -}}
+
+<script>
+window.SITE = {{ dict
+  "sections" $sections
+  "writing"  (sort $writing "date" "desc")
+  "poems"    (sort $poems "date" "desc")
+  "music"    (sort $music "date" "desc")
+  "photos"   (sort $photos "date" "desc")
+  | jsonify | safeJS }};
+</script>

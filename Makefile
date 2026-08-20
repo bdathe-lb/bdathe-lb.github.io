@@ -6,7 +6,7 @@
 #   make serve         Hugo live-reload server
 #   make build         Full production build (slides + Hugo)
 #   make site          Hugo only
-#   make slides        Rebuild slides and sync into static/
+#   make slides        Copy allowlisted decks from ~/reports into static/
 #   make clean         Remove public/ and Hugo cache
 #
 # Overrides:  make serve PORT=1314
@@ -28,13 +28,10 @@ HOST     ?= 127.0.0.1
 PORT     ?= 1313
 BASE_URL ?= http://$(HOST):$(PORT)/
 
-# rsync exclusions when copying built slides into static/
-RSYNC_EXCLUDES := --exclude=.git --exclude=.gitignore --exclude=Makefile --exclude=/site/
-
 .DEFAULT_GOAL := help
 
 .PHONY: help serve open build site slides build-slides sync-slides check clean \
-        build-site check-slides
+        build-site check-slides covers
 
 # --- help ------------------------------------------------------------------
 
@@ -50,9 +47,10 @@ help:
 	  '  Build' \
 	  '    make build          Full production build (slides → sync → Hugo)' \
 	  '    make site           Hugo only  (--gc --minify → public/)' \
-	  '    make slides         Rebuild slides + sync into static/slides/site' \
-	  '    make build-slides   mkslides only (via ~/reports Makefile)' \
-	  '    make sync-slides    rsync reports/site → static/slides/site' \
+	  '    make slides         Copy public decks (data/slides.yaml) from ~/reports' \
+	  '    make build-slides   Rebuild all of ~/reports (workshop, optional)' \
+	  '    make sync-slides    Same as make slides' \
+	  '    make covers         Fetch covers + iTunes previews for data/music.yaml' \
 	  '' \
 	  '  Maintenance' \
 	  '    make check          Verify slides appear in Hugo output' \
@@ -89,27 +87,28 @@ build: slides site
 site:
 	$(HUGO) --gc --minify --cacheDir $(HUGO_CACHE) --cleanDestinationDir
 
-## Rebuild slides (mkslides) and copy them into static/.
-slides: build-slides sync-slides
+## Copy allowlisted decks from ~/reports into static/. Does not rebuild the
+## whole workshop — only data/slides.yaml is public. Run make build-slides
+## first if reports/site is stale.
+slides: sync-slides
 	@echo "✓ slides → $(SLIDES_DST)"
 
-## Run mkslides via reports' Makefile.
-# mkslides rglob-scans the whole tree and resolves symlinks; a local .venv
-# (python → /usr/bin/python3) breaks `mkslides build ./`. reports/Makefile
-# stages a clean tree first.
+## Rebuild every deck in ~/reports. Optional; the wiki no longer needs it
+## unless a public deck's source changed.
 build-slides:
 	$(MAKE) -C $(REPORTS_DIR) build
 
-## Copy built slides from reports into Hugo static/.
+## Copy public decks + shared reveal.js assets. Prunes unpublished html.
 sync-slides:
-	@test -f "$(SLIDES_SRC)/index.html" \
-		|| { echo "error: missing $(SLIDES_SRC)/index.html — run: make build-slides"; exit 1; }
-	@test -f "$(SLIDES_SITE_INDEX)" \
-		|| { echo "error: missing $(SLIDES_SITE_INDEX)"; exit 1; }
-	mkdir -p "$(SLIDES_DST)"
-	rsync -a --delete --delete-excluded $(RSYNC_EXCLUDES) \
-		"$(SLIDES_SRC)/" "$(SLIDES_DST)/"
-	cp "$(SLIDES_SITE_INDEX)" "$(SLIDES_DST)/index.html"
+	python3 scripts/sync-slides.py
+	python3 scripts/slide-back.py "$(SLIDES_DST)"
+
+## Vendor album art and 30s iTunes previews for data/music.yaml.
+# Run after adding a track. Committed rather than fetched during the Hugo
+# build — see scripts/fetch-covers.py for why. Already-present files are
+# skipped; use `make covers FORCE=--force` to re-download.
+covers:
+	python3 scripts/fetch-covers.py $(FORCE)
 
 # --- maintenance -----------------------------------------------------------
 

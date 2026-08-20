@@ -1,300 +1,90 @@
 {{ define "main" }}
-{{ $configPath := "static/slides/site/mkslides.yml" }}
-{{ if fileExists $configPath }}
-    {{ $config := readFile $configPath | transform.Unmarshal }}
-    {{ $deckCount := 0 }}
-    {{ range $section := $config.index.nav }}
-        {{ range $sectionName, $groups := $section }}
-            {{ range $group := $groups }}
-                {{ range $groupName, $entries := $group }}
-                    {{ $deckCount = add $deckCount (len $entries) }}
-                {{ end }}
-            {{ end }}
-        {{ end }}
+{{/* 货架是 data/slides.yaml。封面仍从编好的 html 里读 H1 / 大纲 / 页数 ——
+     工房在 ~/reports，这里只展示清单上的那几份。 */}}
+
+{{ $groups := slice }}
+{{ $gname := "" }}
+{{ $items := slice }}
+{{ range $d := hugo.Data.slides }}
+  {{ if and $gname (ne $d.group $gname) }}
+    {{ $groups = $groups | append (dict "name" $gname "items" $items) }}
+    {{ $items = slice }}
+  {{ end }}
+  {{ $gname = $d.group }}
+  {{ $path := printf "static/slides/site/slides/%s" $d.file }}
+  {{ $title := "" }}
+  {{ $outline := slice }}
+  {{ $slides := 0 }}
+  {{ if fileExists $path }}
+    {{ $raw := readFile $path }}
+    {{ $body := "" }}
+    {{ with findRESubmatch `(?s)<textarea data-template>(.*?)</textarea>` $raw 1 }}
+      {{ $body = index (index . 0) 1 }}
     {{ end }}
-
-    <section class="slides-archive">
-        <header class="slides-header">
-            <div>
-                <div class="slides-kicker">~/slides</div>
-                <h1>{{ .Page.Title }}</h1>
-                <p class="slides-intro">Research notes and meeting presentations, collected along the way.</p>
-            </div>
-            <div class="slides-count" aria-label="{{ $deckCount }} slide decks">
-                <strong>{{ printf "%02d" $deckCount }}</strong>
-                <span>decks</span>
-            </div>
-        </header>
-
-        {{ with .Content }}
-        <div class="slides-page-content">{{ . }}</div>
-        {{ end }}
-
-        <div class="slides-list">
-    {{ range $section := $config.index.nav }}
-        {{ range $sectionName, $groups := $section }}
-            {{ range $group := $groups }}
-                {{ range $groupName, $entries := $group }}
-                    {{ range $entry := collections.Reverse $entries }}
-                        {{ range $title, $file := $entry }}
-                            {{ $html := replaceRE "\\.md$" ".html" $file }}
-                            {{ $deck := printf "/slides/site/%s/%s/%s" $sectionName $groupName $html }}
-                            {{ $label := cond (eq $groupName "meetings") "Research meeting" (humanize $groupName) }}
-                            {{ $displayDate := replace (printf "%v" $title) "-" "." }}
-                            <article class="slide-item">
-                                <div class="slide-timeline" aria-hidden="true">
-                                    <span class="slide-dot"></span>
-                                </div>
-                                <div class="slide-card">
-                                    <div class="slide-meta">
-                                        <time datetime="{{ $title }}">{{ $displayDate }}</time>
-                                        <span>{{ upper $groupName }}</span>
-                                    </div>
-                                    <div class="slide-card-main">
-                                        <h2>{{ $label }}</h2>
-                                        <a class="slide-open" href="{{ $deck }}" title="View {{ $title }} slides">
-                                            <span>slides</span>
-                                            <span aria-hidden="true">↗</span>
-                                        </a>
-                                    </div>
-                                </div>
-                            </article>
-                        {{ end }}
-                    {{ end }}
-                {{ end }}
-            {{ end }}
-        {{ end }}
+    {{ with $body }}
+      {{ with findRESubmatch `(?m)^#[^#]\s*(.+?)\s*$` . 1 }}
+        {{ $title = index (index . 0) 1 }}
+      {{ end }}
+      {{ range findRESubmatch `(?m)^##[^#]\s*(.+?)\s*$` . }}
+        {{ $part := replaceRE `^Part\s*\d+[.、:：]?\s*` "" (index . 1) }}
+        {{ $outline = $outline | append $part }}
+      {{ end }}
+      {{ $slides = add 1 (len (findRE `(?m)^\s*(---|-v-)\s*$` .)) }}
     {{ end }}
-        </div>
-    </section>
-{{ else }}
-    <section class="slides-archive">
-        <header class="slides-header">
-            <div>
-                <div class="slides-kicker">~/slides</div>
-                <h1>{{ .Page.Title }}</h1>
-            </div>
-        </header>
-        <p>Slides have not been synced yet. Run <code>make slides</code> first.</p>
-    </section>
+  {{ end }}
+  {{ $items = $items | append (dict
+      "label" $d.date
+      "title" $title
+      "outline" $outline
+      "slides" $slides
+      "url" (printf "/slides/site/slides/%s" $d.file | relURL)) }}
+{{ end }}
+{{ if $items }}
+  {{ $groups = $groups | append (dict "name" $gname "items" $items) }}
 {{ end }}
 
-<style>
-.slides-archive {
-    --slides-line: var(--code-bg-color);
-    max-width: 820px;
-    margin: 0 auto;
-}
+{{ if $groups }}
+  {{ range $groups }}
+    <section class="deck-group">
+      <div class="rule reveal">
+        <h2>{{ humanize .name }}</h2><span class="bar"></span>
+        <span class="rule-note">{{ printf "%02d" (len .items) }} 份讲稿</span>
+      </div>
 
-.slides-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 2rem;
-    margin-bottom: 3.5rem;
-    padding-bottom: 1.6rem;
-    border-bottom: 1px solid var(--slides-line);
-}
+      <div class="deck-wall">
+        {{ range .items }}
+          {{/* the sheets behind the cover are the deck's own thickness —
+               a two-slide deck should not look like a twenty-slide one */}}
+          {{ $sheets := cond (gt .slides 8) 3 (cond (gt .slides 4) 2 1) }}
+          <a class="deck-cover reveal" data-tilt href="{{ .url }}">
+            <span class="sheets" aria-hidden="true">
+              {{ range seq $sheets }}<i></i>{{ end }}
+            </span>
 
-.slides-kicker {
-    margin-bottom: 0.35rem;
-    color: var(--primary-color);
-    font-size: 0.8rem;
-    font-weight: bold;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-}
+            <span class="cover-face">
+              <span class="cover-top">
+                <span class="cover-date mono">{{ replace .label "-" "." }}</span>
+                {{ with .slides }}<span class="cover-n mono">{{ . }} 页</span>{{ end }}
+              </span>
 
-.slides-header h1 {
-    margin: 0;
-    padding: 0;
-}
+              <span class="cover-title">{{ with .title }}{{ . }}{{ else }}{{ replace $.Title "-" "." }}{{ end }}</span>
 
-.slides-intro {
-    max-width: 580px;
-    margin: 0.65rem 0 0;
-    color: var(--secondary-color);
-    line-height: 1.65;
-}
+              {{ with .outline }}
+                <span class="cover-outline">
+                  {{ range first 4 . }}<i>{{ . }}</i>{{ end }}
+                  {{ if gt (len .) 4 }}<i class="more">+{{ sub (len .) 4 }}</i>{{ end }}
+                </span>
+              {{ end }}
 
-.slides-count {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    flex: none;
-    color: var(--secondary-color);
-    line-height: 1;
-}
+              <span class="cover-go mono">打开 <b>↗</b></span>
+            </span>
+          </a>
+        {{ end }}
+      </div>
+    </section>
+  {{ end }}
+{{ else }}
+  <p class="mono">还没有生成幻灯 —— 先运行 <code>make slides</code>。</p>
+{{ end }}
 
-.slides-count strong {
-    color: var(--font-color);
-    font-size: 2rem;
-    font-weight: normal;
-}
-
-.slides-count span {
-    margin-top: 0.35rem;
-    font-size: 0.75rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.slides-page-content {
-    margin: -2rem 0 3rem;
-}
-
-.slides-list {
-    margin: 0;
-}
-
-.slide-item {
-    display: grid;
-    grid-template-columns: 1.25rem minmax(0, 1fr);
-    gap: 1rem;
-    margin: 0;
-}
-
-.slide-timeline {
-    position: relative;
-    display: flex;
-    justify-content: center;
-}
-
-.slide-timeline::after {
-    content: "";
-    position: absolute;
-    top: 0.8rem;
-    bottom: -0.8rem;
-    width: 1px;
-    background: var(--slides-line);
-}
-
-.slide-item:last-child .slide-timeline::after {
-    display: none;
-}
-
-.slide-dot {
-    position: relative;
-    z-index: 1;
-    width: 0.5rem;
-    height: 0.5rem;
-    margin-top: 0.55rem;
-    border: 2px solid var(--background-color);
-    border-radius: 50%;
-    background: var(--secondary-color);
-    box-shadow: 0 0 0 1px var(--secondary-color);
-    transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.slide-item:hover .slide-dot {
-    background: var(--primary-color);
-    box-shadow: 0 0 0 1px var(--primary-color);
-}
-
-.slide-card {
-    margin-bottom: 1.25rem;
-    padding: 1.1rem 1.25rem;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background: var(--code-bg-color);
-    transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.slide-item:hover .slide-card {
-    border-color: var(--secondary-color);
-    transform: translateX(4px);
-}
-
-.slide-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    color: var(--secondary-color);
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-}
-
-.slide-meta time {
-    color: var(--primary-color);
-    font-weight: bold;
-}
-
-.slide-meta span::before {
-    content: "/";
-    margin-right: 0.8rem;
-    opacity: 0.45;
-}
-
-.slide-card-main {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1.5rem;
-    margin-top: 0.65rem;
-}
-
-.slide-card-main h2 {
-    margin: 0;
-    padding: 0;
-    color: var(--font-color);
-    font-size: 1.1rem;
-}
-
-.slide-open {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    flex: none;
-    padding: 0.35rem 0.7rem;
-    border: 1px solid var(--secondary-color);
-    border-radius: 999px;
-    color: var(--secondary-color) !important;
-    font-size: 0.8rem;
-    text-decoration: none !important;
-    transition: border-color 0.2s ease, color 0.2s ease;
-}
-
-.slide-open:hover {
-    background-color: transparent !important;
-    color: var(--primary-color) !important;
-    border-color: var(--primary-color);
-}
-
-@media only screen and (max-width: 600px) {
-    .slides-header {
-        align-items: flex-start;
-        margin-bottom: 2.5rem;
-    }
-
-    .slides-count {
-        display: none;
-    }
-
-    .slide-card {
-        padding: 1rem;
-    }
-
-    .slide-card-main {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 0.9rem;
-    }
-
-    .slide-open {
-        align-self: stretch;
-        justify-content: space-between;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .slide-card,
-    .slide-dot {
-        transition: none;
-    }
-
-    .slide-item:hover .slide-card {
-        transform: none;
-    }
-}
-</style>
 {{ end }}

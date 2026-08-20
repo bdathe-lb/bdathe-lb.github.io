@@ -3,6 +3,8 @@
   author: "李煜"
   dynasty: "五代"
   date: "2026-06-26"
+  paper: "素笺"
+  motif: "none"
   excerpt: "最是仓皇辞庙日，教坊犹奏别离歌，垂泪对宫娥。"
   sections:
     - name: "上阙"
@@ -18,6 +20,8 @@
   author: "李清照"
   dynasty: "宋（南北宋之交）"
   date: "2026-06-26"
+  paper: "梅笺"
+  motif: "mei"
   excerpt: "此情无计可消除，才下眉头，却上心头。"
   sections:
     - name: "上阙"
@@ -33,6 +37,8 @@
   author: "李清照"
   dynasty: "宋（南北宋之交）"
   date: "2026-06-24"
+  paper: "菊笺"
+  motif: "ju"
   excerpt: "莫道不销魂，帘卷西风，人比黄花瘦。"
   sections:
     - name: "上阙"
@@ -49,6 +55,8 @@
   author: "欧阳修"
   dynasty: "北宋"
   date: "2026-06-24"
+  paper: "柳笺"
+  motif: "liu"
   excerpt: "把酒祝东风，且共从容。"
   sections:
     - name: "上阙"
@@ -64,6 +72,8 @@
   author: "辛弃疾"
   dynasty: "南宋"
   date: "2026-06-23"
+  paper: "柳笺"
+  motif: "liu"
   excerpt: "情知已被山遮断，频倚阑干不自由。"
   sections:
     - name: "上阙"

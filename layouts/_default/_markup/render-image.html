@@ -1,0 +1,13 @@
+{{- /* Page-bundle images get resized and served as webp; anything else
+       (absolute paths, remote URLs) passes through untouched. */ -}}
+{{- $img := "" -}}
+{{- with .Page.Resources.GetMatch .Destination }}{{ $img = . }}{{ end -}}
+{{- if and $img (eq $img.ResourceType "image") -}}
+  {{- $r := cond (gt $img.Width 1200) ($img.Resize "1200x webp q82") $img -}}
+  <img src="{{ $r.RelPermalink }}" width="{{ $r.Width }}" height="{{ $r.Height }}"
+       alt="{{ .Text }}"{{ with .Title }} title="{{ . }}"{{ end }}
+       loading="lazy" decoding="async" class="img-responsive">
+{{- else -}}
+  <img src="{{ .Destination | safeURL }}" alt="{{ .Text }}"{{ with .Title }} title="{{ . }}"{{ end }}
+       loading="lazy" decoding="async" class="img-responsive">
+{{- end -}}

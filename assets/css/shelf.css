@@ -1,0 +1,797 @@
+/* ═══════════════════════════════════════════════════════════
+   文 · 书架 + 卡片箱
+   Loaded only by layouts/shelf/list.html, on top of main.css.
+
+   Two objects, one room. Everything here is shape — colour, type and
+   easing all come from main.css, and nothing in this file introduces a
+   hue the site does not already have. The books are tinted by mixing
+   --accent into a near-neutral at 6–22%, which is the same trick
+   /vinyl/ uses on --tone: the palette runs cool and stays cool.
+
+   Nothing is an image. The case, the boards, the bookend, the box and
+   its lip are all borders and gradients, like the desk on the home page.
+
+   Geometry that matters, written down because it is easy to break:
+     · 层板 18px tall, sitting at the shelf's bottom; .books is anchored
+       at bottom:18px so a book stands ON the board rather than through it.
+     · 书 rotate about `bottom left` — that one origin has to serve both
+       the tip-forward (rotateX) and the pull-out (rotateY), and any other
+       origin makes the pull-out swing through its neighbours.
+     · 封面 is hinged at the spine's left edge and parked at rotateY(90deg),
+       so on the shelf it is edge-on — one pixel wide, effectively absent.
+       Turning the book to −62° brings it round to face the reader.
+     · 卡片箱: 卡脚在 92px，箱口前板压到 100px，所以卡面上任何一行都必须
+       离卡底 ≥16px，否则会被前板吃掉。日期那行就是这么来的。
+   ═══════════════════════════════════════════════════════════ */
+
+.room { margin: 0 0 5rem; }
+.room .rule { margin-bottom: 1.6rem; }
+
+/* 一行清点 —— 两件家具各装了多少 */
+.wen-tally {
+  display: flex;
+  align-items: center;
+  gap: 1.7rem;
+  flex-wrap: wrap;
+  padding: 2.6rem 0 1.2rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+}
+.wen-tally b { color: var(--ink); font-family: var(--serif); font-size: 0.82rem; letter-spacing: 0.06em; }
+.wen-tally .k { display: inline-flex; align-items: center; gap: 7px; }
+.wen-tally .k i { width: 16px; height: 3px; border-radius: 2px; background: var(--accent); font-style: normal; }
+.wen-tally .k.n i { background: repeating-linear-gradient(90deg, var(--muted) 0 3px, transparent 3px 6px); }
+.demo-flag {
+  margin-left: auto;
+  padding: 2px 9px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 38%, var(--line));
+  border-radius: 999px;
+  color: var(--accent-deep);
+  font-size: 0.55rem;
+}
+
+.nudge {
+  appearance: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+  width: 26px; height: 26px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  transition: color var(--mid) var(--soft), border-color var(--mid) var(--soft),
+              transform var(--mid) var(--spring);
+}
+.nudge:hover { color: var(--accent); border-color: var(--accent); transform: scale(1.12); }
+.nudge:disabled { opacity: 0.3; cursor: default; transform: none; }
+
+/* ═════════════════════════════════════════════════════════
+   书架 · 随笔
+   ═════════════════════════════════════════════════════════ */
+
+/* 柜体 —— 两侧立板和顶板都画在背景里，不用叠元素，
+   免得它们和抽出来的书抢层级 */
+.case {
+  position: relative;
+  padding: 12px 14px 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, #eaeef3 0 12px, transparent 12px),
+    linear-gradient(90deg, #e6ebf1 0 14px, transparent 14px),
+    linear-gradient(270deg, #e6ebf1 0 14px, transparent 14px),
+    linear-gradient(180deg, #f4f6f9, #edf0f4);
+  box-shadow: 0 46px 80px -54px rgba(27, 36, 48, 0.5), inset 0 1px 0 #fff;
+}
+
+/* 一层板。262px 是算出来的，不是凑的：最高的书 222px，抽出来
+   往前推 150px、再被 1400px 的透视放大约 1.12 倍，顶到 246px；
+   立隔板 244px。262 刚好把两者都兜住，再高就是白费的空档。 */
+.shelf {
+  position: relative;
+  height: 262px;
+  perspective: 1400px;
+  perspective-origin: 46% 64%;
+}
+
+/* 板后的凹进去 —— 书背后是有深度的，不是一张纸 */
+.shelf-back {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, #e6ebf0 0%, #f1f4f8 46%, #edf0f5 100%);
+  box-shadow:
+    inset 0 11px 20px -12px rgba(27, 36, 48, 0.42),
+    inset 0 -7px 13px -10px rgba(27, 36, 48, 0.24);
+}
+
+.books {
+  position: absolute;
+  left: 2px; right: 0; bottom: 0;
+  z-index: 4;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  /* 3D 只发生在 .book 里。preserve-3d 铺到这一层，立隔板上
+     writing-mode: vertical-rl 的字会在邻书一转时被合成层裁掉。 */
+}
+
+/* 层板是流内元素，不是绝对定位 —— 窄屏上 .shelf 会变成横向滚动区，
+   板要是在里面就会跟着书一起滚走 */
+.shelf-board {
+  position: relative;
+  z-index: 3;
+  height: 18px;
+  margin: 0 -14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 13px;
+  background: linear-gradient(180deg, #fbfcfd, #e7ebf0);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  box-shadow: 0 9px 17px -10px rgba(27, 36, 48, 0.46), inset 0 1px 0 #fff;
+}
+.shelf-board b, .shelf-board i {
+  font-size: 0.54rem;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 400;
+}
+
+/* ── 一本书 ────────────────────────────────────────────── */
+
+.book {
+  position: relative;
+  flex: 0 1 var(--w);
+  width: var(--w);
+  height: var(--h);
+  transform-style: preserve-3d;
+  /* 这一个原点要同时伺候「勾住书顶往外带」和「抽出来转过身」两个动作 */
+  transform-origin: bottom left;
+  transition: translate var(--slow) var(--soft), rotate var(--slow) var(--spring),
+              opacity var(--mid) var(--soft), filter var(--mid) var(--soft);
+  animation: bookIn 640ms var(--out) backwards;
+  animation-delay: calc(var(--i) * 62ms + 140ms);
+}
+/* 上架：一本一本放上去 */
+@keyframes bookIn {
+  from { opacity: 0; translate: -16px 30px 0; rotate: z -13deg; }
+}
+
+/* 勾住书顶，往外一带 */
+.book:not(.out):hover,
+.book:not(.out):focus-visible { rotate: x -14deg; }
+.book:focus-visible { outline: none; }
+
+/* 抽出来的那一本：先离架，再转身 */
+.book.out {
+  translate: 0 -8px 150px;
+  rotate: y -62deg;
+  z-index: 6;
+}
+/* 空出来的位置，右边的书会朝它倒过去 —— 少了这一下，
+   抽书就只是一个元素在动，而不是一排书里少了一本 */
+.book.out + .book { rotate: z -7deg; }
+.book.out + .book + .book { rotate: z -3deg; }
+
+/* 筛掉的书退到后面去，位置一格不动 */
+.book.dim { opacity: 0.26; filter: grayscale(1); }
+
+/* ── 书脊 ── */
+.spine {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0 30px;
+  overflow: hidden;
+  border: 1px solid rgba(27, 36, 48, 0.11);
+  border-radius: 2px 2px 0 0;
+  /* 横向的渐变就是书脊的圆 —— 中间受光，两侧压暗 */
+  background: linear-gradient(100deg,
+    color-mix(in oklab, var(--accent) var(--tint), #f6f8fa) 0%,
+    color-mix(in oklab, var(--accent) calc(var(--tint) + 5%), #eaeef3) 60%,
+    color-mix(in oklab, var(--accent) calc(var(--tint) + 9%), #e1e6ed) 100%);
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.55),
+    inset -3px 0 5px -3px rgba(27, 36, 48, 0.3);
+  transition: box-shadow var(--slow) var(--soft);
+}
+/* 书脊上下两道压线 */
+.spine::before, .spine::after {
+  content: '';
+  position: absolute;
+  left: 4px; right: 4px;
+  height: 1px;
+  background: rgba(27, 36, 48, 0.17);
+}
+.spine::before { top: 12px; }
+.spine::after { bottom: 24px; }
+
+.book:not(.out):hover .spine,
+.book:not(.out):focus-visible .spine {
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.7),
+    0 20px 28px -16px rgba(27, 36, 48, 0.52);
+}
+.book:focus-visible .spine { outline: 2px solid var(--accent); outline-offset: 2px; }
+.book.out .spine {
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.7),
+    -28px 38px 58px -28px rgba(27, 36, 48, 0.46);
+}
+
+/* 题名竖排 —— 中文书脊本来就是这么排的。nowrap 是关键：
+   竖排里换行会往左另起一列，在一条书脊上那是错的 */
+.spine-t {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  font-family: var(--serif);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  color: var(--ink);
+  max-height: calc(var(--h) - 58px);
+  overflow: hidden;
+}
+/* 脚上的社标 */
+.spine-mark {
+  position: absolute;
+  bottom: 10px; left: 50%;
+  translate: -50% 0;
+  width: 7px; height: 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 52%, transparent);
+  border-radius: 1px;
+}
+
+/* ── 封面 ── */
+.cover {
+  position: absolute;
+  left: 0; top: 0;
+  width: 152px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 15px 14px 13px;
+  transform-origin: left center;
+  rotate: y 90deg;
+  background: linear-gradient(158deg, #fdfeff, #edf1f6);
+  border: 1px solid rgba(27, 36, 48, 0.13);
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
+  transition: opacity var(--mid) var(--soft);
+}
+.book.out .cover { opacity: 1; transition-delay: 130ms; }
+.cover-k { font-size: 0.5rem; letter-spacing: 0.2em; color: var(--accent-deep); }
+.cover-t {
+  margin-top: 0.7rem;
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1.55;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.cover-rule { margin-top: auto; height: 1px; background: color-mix(in srgb, var(--accent) 42%, transparent); }
+.cover-m { margin-top: 0.6rem; font-size: 0.52rem; letter-spacing: 0.1em; color: var(--muted); }
+.cover-d { margin-top: 0.15rem; font-size: 0.52rem; letter-spacing: 0.1em; color: var(--muted); }
+
+/* ── 立隔板 —— 年份排在书与书之间。比最高的书还高出一截，
+      隔板本来就该高出来，不然它就成了一本没写字的书 ── */
+.divider {
+  position: relative;
+  z-index: 5;
+  isolation: isolate;
+  flex: 0 0 auto;
+  align-self: flex-end;
+  width: 17px;
+  height: 244px;
+  margin: 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 9px;
+  background: linear-gradient(100deg, #eef1f5, #dde3ea);
+  border: 1px solid #d0d7e0;
+  border-radius: 2px 2px 0 0;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.6), -4px 4px 9px -5px rgba(27, 36, 48, 0.26);
+  /* 只淡入。bookIn 带着 rotate/translate，竖排字走完一趟会丢 */
+  animation: divIn 640ms var(--out) backwards;
+  animation-delay: calc(var(--i) * 62ms + 140ms);
+}
+@keyframes divIn { from { opacity: 0; } }
+.divider b, .divider i {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  transform: translateZ(0);
+  font-weight: 400;
+  font-style: normal;
+}
+.divider b {
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  color: var(--ink);
+}
+.divider i {
+  font-size: 0.5rem;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+/* ── 书挡 —— 一排的尽头 ── */
+.bookend {
+  position: relative;
+  flex: 0 0 auto;
+  align-self: flex-end;
+  width: 30px;
+  height: 132px;
+  margin-left: 9px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(100deg, #f1f4f7, #dee4ec);
+  border: 1px solid #d1d8e1;
+  border-radius: 0 2px 0 0;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.6);
+}
+/* L 形的脚，朝没有书的那一边伸出去 */
+.bookend::after {
+  content: '';
+  position: absolute;
+  left: 100%; bottom: 0;
+  width: 26px; height: 5px;
+  background: linear-gradient(180deg, #e7ecf2, #d5dce5);
+  border: 1px solid #d1d8e1;
+  border-left: 0;
+}
+.bookend b {
+  writing-mode: vertical-rl;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* ── 摊开 —— 抽出来的那一本。空着时整栏收掉，抽出才长开：
+      0fr → 1fr，和站点里 .poem-body 是同一招 ── */
+.readpost { margin-top: 0; }
+.readpost[data-state='open'] { margin-top: 1.1rem; }
+.rp-bar {
+  display: none;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--line);
+}
+.readpost[data-state='open'] .rp-bar { display: flex; }
+.rp-hint {
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  transition: color var(--mid) var(--soft);
+}
+.readpost[data-state='open'] .rp-hint { color: var(--accent-deep); }
+.rp-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 440ms var(--soft); }
+.readpost[data-state='open'] .rp-more { grid-template-rows: 1fr; }
+.rp-more > div { overflow: hidden; }
+.rp-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 2.6rem;
+  padding-top: 1.4rem;
+}
+.rp-k { display: block; font-size: 0.56rem; letter-spacing: 0.18em; color: var(--accent-deep); }
+.readpost h3 { margin: 0.5rem 0 0; font-family: var(--serif); font-size: 1.45rem; line-height: 1.5; letter-spacing: 0.03em; }
+.rp-s { margin: 0.75rem 0 0; max-width: 40em; font-family: var(--serif); font-size: 0.95rem; line-height: 1.95; color: var(--muted); }
+.rp-side { display: flex; flex-direction: column; align-items: flex-start; }
+.rp-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 1rem; }
+.rp-tags span {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 1px 6px;
+}
+.rp-m { padding-bottom: 0.7rem; border-bottom: 1px solid var(--line); align-self: stretch; font-size: 0.6rem; letter-spacing: 0.1em; color: var(--muted); }
+.rp-go { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.2rem; font-size: 0.64rem; letter-spacing: 0.14em; color: var(--accent-deep); }
+.rp-go span { transition: transform var(--mid) var(--soft); }
+.rp-go:hover span { transform: translateX(4px); }
+.rp-back {
+  margin-left: auto;
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: color var(--mid) var(--soft), opacity var(--mid) var(--soft);
+}
+.readpost[data-state='open'] .rp-back { opacity: 1; pointer-events: auto; }
+.rp-back:hover { color: var(--accent); }
+/* 换一本的时候，说明自己也换一次 */
+.readpost.swap .rp-k, .readpost.swap h3, .readpost.swap .rp-s { animation: rpIn 420ms var(--soft) both; }
+.readpost.swap h3 { animation-delay: 45ms; }
+.readpost.swap .rp-s { animation-delay: 90ms; }
+@keyframes rpIn { from { opacity: 0; transform: translateY(7px); } }
+
+/* ═════════════════════════════════════════════════════════
+   卡片箱 · 笔记
+   ═════════════════════════════════════════════════════════ */
+
+.tray {
+  position: relative;
+  height: 500px;
+  /* 抽出来的卡片会往上冒出箱顶约 8px（−74px 再乘上 Z+140 的透视放大），
+     这一段留给它 —— 不留，抽卡的瞬间会被上一节的规则线切一刀 */
+  margin-top: 48px;
+  touch-action: pan-y;
+  cursor: grab;
+  perspective: 1600px;
+  perspective-origin: 36% 44%;
+}
+.tray.dragging { cursor: grabbing; }
+.box { position: absolute; inset: 0; transform-style: preserve-3d; }
+
+/* 箱子是真的箱子：后壁在 −215px，底板从前沿倒下去正好接上它 */
+.box-back {
+  position: absolute;
+  left: -34px; right: -34px; bottom: 92px;
+  height: 236px;
+  translate: 0 0 -215px;
+  background: linear-gradient(180deg, #e5eaf0, #dce2e9);
+  border: 1px solid #d4dae2;
+  border-radius: 4px 4px 0 0;
+  box-shadow: inset 0 -24px 40px -24px rgba(27, 36, 48, 0.3);
+}
+.box-floor {
+  position: absolute;
+  left: -10px; right: -10px; bottom: 92px;
+  height: 236px;
+  transform-origin: bottom;
+  rotate: x 66deg;
+  background: linear-gradient(180deg, #e8ecf2, #f3f6f9);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: inset 0 3px 16px rgba(27, 36, 48, 0.12);
+}
+
+.slots {
+  position: absolute;
+  left: 0; right: 0; bottom: 92px;
+  height: 0;
+  transform-style: preserve-3d;
+  translate: var(--shift, 0px) 0;
+  transition: translate 620ms var(--soft);
+}
+.slots.dragging { transition: none; }
+
+/* 位置用 translate，倾角用 rotate —— 两个独立属性，
+   所以「摆到哪」「拔出多少」「倒多少」互不打架 */
+.slot {
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 262px;
+  color: inherit;
+  translate: var(--x) 0 0;
+  rotate: y 48deg;
+  transform-origin: left bottom;
+  transition: translate var(--vslow) var(--spring), rotate var(--vslow) var(--spring),
+              scale var(--vslow) var(--spring), opacity var(--mid) var(--soft),
+              filter var(--mid) var(--soft);
+  animation: slotIn 680ms var(--out) backwards;
+  animation-delay: calc(var(--i) * 44ms + 140ms);
+}
+@keyframes slotIn { from { opacity: 0; translate: var(--x) 54px -60px; rotate: y 80deg; } }
+/* 拨动中用短过渡跟手；松开切回弹簧 */
+.slots.rifling .slot { transition: translate 130ms linear, rotate 130ms linear; }
+.slots.rifling .slot.lift {
+  transition: translate var(--vslow) var(--spring), rotate var(--vslow) var(--spring), scale var(--vslow) var(--spring);
+}
+/* 没有 JS 的时候也还有个交代 */
+.slot:hover { rotate: y 18deg; }
+
+.card { display: block; height: 322px; cursor: pointer; }
+.card:focus-visible { outline: none; }
+.card-face {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: linear-gradient(192deg, #ffffff, #f5f8fb);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  box-shadow: -7px 6px 18px -6px rgba(27, 36, 48, 0.24);
+  transition: box-shadow var(--slow) var(--soft), border-color var(--slow) var(--soft);
+}
+.slot.near .card-face { box-shadow: -18px 24px 50px -16px rgba(27, 36, 48, 0.34); border-color: #d5dce5; }
+.card:focus-visible .card-face {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft), -18px 24px 50px -16px rgba(27, 36, 48, 0.34);
+}
+/* 卡片有厚度 */
+.card-face::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 5px;
+  background: repeating-linear-gradient(90deg, rgba(27, 36, 48, 0.12) 0 1px, transparent 1px 2px);
+}
+.card-band { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 8px); }
+
+/* 露在外面的书口（112px，48° 投影后正好 75px ≈ 一个卡距） */
+.card-edge {
+  position: absolute;
+  left: 0; top: 4px; bottom: 0;
+  width: 112px;
+  padding: 16px 0 40px 15px;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  border-right: 1px solid rgba(228, 232, 237, 0.85);
+}
+.card-title {
+  writing-mode: vertical-rl;
+  font-family: var(--serif);
+  font-size: 1rem;
+  letter-spacing: 0.11em;
+  line-height: 1.5;
+  max-height: 208px;
+  overflow: hidden;
+  color: var(--ink);
+}
+/* 字数一道竖着的墨条 —— 卡片合着的时候就能互相比长短 */
+.wbar { position: relative; width: 4px; height: 202px; background: var(--line); border-radius: 2px; margin-top: 4px; }
+.wbar i {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.5;
+  height: var(--wp);
+  animation: wbarUp 780ms var(--out) 320ms backwards;
+  transition: opacity var(--mid) var(--soft);
+}
+@keyframes wbarUp { from { height: 0; } }
+.slot.near .wbar i { opacity: 1; }
+/* 前板压到 tray 的 100px，卡脚在 92px —— 这一行必须离卡底 ≥16px */
+.card-when {
+  position: absolute;
+  left: 15px; bottom: 17px;
+  font-size: 0.56rem;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+/* 转过来才看得见的那一半 */
+.card-body {
+  position: absolute;
+  left: 112px; right: 0; top: 4px; bottom: 0;
+  padding: 19px 19px 16px;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity var(--mid) var(--soft), transform var(--slow) var(--soft);
+}
+.slot.near .card-body, .slot.lift .card-body, .card:focus-visible .card-body {
+  opacity: 1;
+  transform: none;
+  transition-delay: 90ms;
+}
+.card-kicker { font-size: 0.55rem; letter-spacing: 0.16em; color: var(--accent-deep); }
+.card-sum { display: block; margin: 0.7rem 0 0; font-size: 0.79rem; line-height: 1.8; color: var(--muted); }
+.card-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: auto; padding-top: 0.8rem; }
+.card-tags span {
+  font-family: var(--mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 1px 5px;
+}
+.card-len {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+/* 隔板（年） */
+.sep { height: 368px; pointer-events: none; }
+.sep-body {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(192deg, #ecf0f4, #e0e5ec);
+  border: 1px solid #d5dbe3;
+  border-radius: 2px;
+  box-shadow: -6px 5px 14px -6px rgba(27, 36, 48, 0.22);
+}
+.sep-tab {
+  position: absolute;
+  left: 13px; top: 12px;
+  padding: 9px 7px;
+  background: var(--bg);
+  border: 1px solid #d5dbe3;
+  border-radius: 2px;
+  writing-mode: vertical-rl;
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  color: var(--ink);
+  box-shadow: 2px 3px 8px -4px rgba(27, 36, 48, 0.3);
+}
+.sep-n {
+  position: absolute;
+  left: 17px; bottom: 56px;
+  writing-mode: vertical-rl;
+  font-family: var(--serif);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+}
+
+/* 抽出来：就地朝读者的方向拔，不是滑到别处 */
+.slot.lift { scale: 1.015; }
+.slot.lift .card-face { box-shadow: -6px 54px 92px -34px rgba(27, 36, 48, 0.44); border-color: #cbd4de; }
+.tray.picked .slot:not(.lift) { opacity: 0.26; filter: blur(1.4px) grayscale(0.4); }
+.card-go {
+  position: absolute;
+  right: 19px; bottom: 15px;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  color: var(--accent-deep);
+  opacity: 0;
+  transition: opacity var(--mid) var(--soft);
+}
+.slot.lift .card-go { opacity: 1; transition-delay: 240ms; }
+.card-go span { display: inline-block; transition: transform var(--mid) var(--soft); }
+.slot.lift .card-go:hover span { transform: translateX(4px); }
+
+/* 筛掉的卡沉回箱底 —— 箱子还是满的，年份结构一格不动 */
+.slot.sunk { translate: var(--x) 40px -70px !important; rotate: y 68deg !important; opacity: 0.3; filter: grayscale(1); }
+
+/* 箱子的前板，画在卡片前面 */
+.tray-lip {
+  position: absolute;
+  left: -16px; right: -16px; bottom: 30px;
+  height: 70px;
+  z-index: 10;
+  background: linear-gradient(180deg, #f8fafb, #e6ebf0);
+  border: 1px solid var(--line);
+  border-radius: 0 0 7px 7px;
+  box-shadow: 0 24px 44px -24px rgba(27, 36, 48, 0.46), inset 0 1px 0 #fff;
+}
+.tray-lip::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 22px;
+  width: 78px; height: 9px;
+  margin-left: -39px;
+  border: 1px solid #d8dee6;
+  border-radius: 999px;
+  background: #edf0f5;
+}
+/* 箱口两端：卡排从这里没进箱子里去。抽出一张的时候要让开 ——
+   排头那张抽出来正好落在左口下面，不让会被这道渐变洗掉半张脸 */
+.cap {
+  position: absolute;
+  top: 0; bottom: 26px;
+  width: 76px;
+  z-index: 8;
+  pointer-events: none;
+  transition: opacity var(--mid) var(--soft);
+}
+.tray.picked .cap { opacity: 0; }
+.cap-l { left: -16px; background: linear-gradient(90deg, var(--bg) 34%, transparent); }
+.cap-r { right: -16px; background: linear-gradient(270deg, var(--bg) 34%, transparent); }
+
+/* ── 索引条 ── */
+.indexbar { margin-top: 2.4rem; padding-top: 1.1rem; border-top: 1px solid var(--line); }
+.ticks { display: flex; align-items: flex-end; gap: 4px; height: 34px; }
+.tick {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.tick i {
+  display: block;
+  width: 100%;
+  height: var(--h);
+  border-radius: 1px;
+  background: var(--line);
+  transition: background var(--mid) var(--soft), height var(--mid) var(--spring);
+}
+.tick:hover i, .tick:focus-visible i { background: var(--accent); height: calc(var(--h) + 6px); }
+.tick.on i { background: var(--accent); }
+.tick.yr { border-left: 1px solid var(--line); padding-left: 5px; margin-left: 5px; }
+.tick.yr::after {
+  content: attr(data-y);
+  position: absolute;
+  left: 5px; top: -2px;
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.indexbar-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.8rem;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+}
+
+/* ═════════════════════════════════════════════════════════
+   窄屏
+   ═════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .rp-in { grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
+  .rp-m { align-self: auto; }
+}
+
+/* 一排书在窄屏上挤不下。与其把书脊压到看不清字，不如让这一排横着推 ——
+   厚薄是这个设计唯一要说的事，压扁它等于把设计压没了。
+   层板和柜体都在滚动区外面，所以推走的只有书。凹进去的底色改画在
+   .shelf 自己的 background 上：元素背景不随内容滚动，绝对定位的
+   .shelf-back 会。 */
+@media (max-width: 860px) {
+  .shelf {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+    background: linear-gradient(180deg, #e6ebf0 0%, #f1f4f8 46%, #edf0f5 100%);
+    box-shadow:
+      inset 0 11px 20px -12px rgba(27, 36, 48, 0.42),
+      inset 0 -7px 13px -10px rgba(27, 36, 48, 0.24);
+  }
+  .shelf::-webkit-scrollbar { height: 4px; }
+  .shelf::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+  .shelf-back { display: none; }
+  .books { right: auto; width: max-content; padding-right: 16px; }
+  .book { flex: 0 0 var(--w); }
+}
+
+@media (max-width: 680px) {
+  .tray { height: 420px; margin-top: 110px; }
+  .slot { width: 226px; }
+  .card { height: 278px; }
+  .sep { height: 318px; }
+  .card-title { max-height: 170px; font-size: 0.92rem; }
+  .wbar { height: 164px; }
+  .demo-flag { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book, .divider, .slot, .wbar i { animation: none; }
+  .book, .slot, .slots, .card-body, .card-face, .spine, .cover, .tick i { transition: none; }
+  .readpost.swap .rp-k, .readpost.swap h3, .readpost.swap .rp-s { animation: none; }
+}

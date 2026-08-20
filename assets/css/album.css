@@ -1,0 +1,627 @@
+/* ═══════════════════════════════════════════════════════════
+   影 · 相册
+   只由 layouts/album/list.html 加载，叠在 main.css 上面。
+
+   一本摊开的台纸相册。全部形状都由这里给，颜色一律走站点 token ——
+   这一页自己拥有的只有 --card / --corner 两个纸色，都在 --surface 的
+   ±3% 以内，为的是让相册读起来像"放在页面上的一本册子"，而不是页面
+   上又一块面板。
+
+   两个动作，各自都是相册真正的动作：
+
+     翻页 —— 绕订口转过去。翻动的那一叶有正反两个真面（album.js 把
+             旧的那一页和新的那一页克隆进去），所以转到一半看到的是
+             下一页的背影，不是一张空卡纸。硫酸纸比台纸轻，先起 80ms。
+
+     看图 —— 照片被从相角里拿起来。相角属于台纸，不属于照片，所以
+             照片走了，四个角还留在原地 —— 这是这个设计唯一要说的事。
+
+   照片的静息处理沿用现有 /photos/：saturate(.88) brightness(var(--dim))，
+   被注视时才还原。这一页不新增任何一种"注视"以外的高亮。
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* 台纸比 --surface 再深一档：够把册子从页面里分出来，又不至于变成
+     一块灰色的板子 */
+  --card: #eef1f5;
+  --corner: #ccd5de;
+  /* 一叶的高度是固定的 —— 翻页时书不能忽高忽低，那是纸做不到的事。
+     两张照片各 216 + 各自的说明两行 + 页眉 + 上下内边距，凑到这里；
+     只贴一张的那一叶因此底下会空一截，而那正是相册的样子。 */
+  --leaf-h: 756px;
+}
+
+.al-wrap { position: relative; margin: 0 0 4rem; padding-top: 2.6rem; }
+
+/* ─────────────────────────────────────────────────────────
+   摊开的册子
+   ───────────────────────────────────────────────────────── */
+
+.al-book {
+  position: relative;
+  display: flex;
+  width: min(100%, 980px);
+  height: var(--leaf-h);
+  margin: 0 auto;
+  /* 透视放在书上而不是外层：转过去的那一叶必须绕这本书的订口转，
+     不是绕视口中心 */
+  perspective: 2200px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 44px 70px -44px rgba(27, 36, 48, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* 书口 —— 两侧露出来的那一叠纸。没有它，摊开的册子只是两个矩形 */
+.al-book::before,
+.al-book::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  width: 7px;
+  background: repeating-linear-gradient(90deg, #e6eaf0 0 1px, #f6f8fa 1px 3px);
+  box-shadow: inset 0 0 0 1px rgba(27, 36, 48, 0.05);
+}
+.al-book::before { left: -8px; border-radius: 2px 0 0 2px; }
+.al-book::after { right: -8px; border-radius: 0 2px 2px 0; }
+
+/* 订口 —— 折缝，以及两页往缝里投的影 */
+.al-gutter {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 52px;
+  transform: translateX(-50%);
+  /* 压在所有东西之上，包括正在翻过去的那一叶。放在它下面的话，翻到
+     后半程折缝被那一叶盖住，撤走的那一帧又冒出来 —— 一条 26px 宽、
+     整页高的影子凭空出现一下。而且正在越过书脊的那张纸本来就该在书脊
+     的阴影里，压上去反而更对。 */
+  z-index: 9;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(27, 36, 48, 0.05) 34%, rgba(27, 36, 48, 0.105) 50%,
+    rgba(27, 36, 48, 0.05) 66%, transparent 100%);
+}
+.al-gutter i {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(27, 36, 48, 0.15);
+}
+
+/* 一次只摊开一个跨页。.on 由模板印在跨页 0 上，所以脚本到达之前
+   页面已经是一本翻开的册子；没有脚本时下面的 fallback 接管。
+
+   不用 display:none。隐藏的跨页若从渲染树里拿掉，翻过去那一帧才把
+   两叶照片排版、解码、上传进 GPU —— 那一下就是卡顿，而且背面那一
+   叶（下一页的拷贝）会在转到一半时才冒出来，看着像重影。叠在同一
+   个盒子里、只关 visibility：图一直是解码好的，换跨页只是显隐。 */
+:root.album-live .spread {
+  display: flex;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  visibility: hidden;
+  pointer-events: none;
+}
+:root.album-live .spread.on {
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+/* ─────────────────────────────────────────────────────────
+   一叶
+   ───────────────────────────────────────────────────────── */
+
+.leaf {
+  position: relative;
+  flex: 1 1 50%;
+  min-width: 0;
+  padding: 2rem 2.2rem 2.6rem;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.leaf-t {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1.2rem;
+  border-bottom: 1px solid rgba(27, 36, 48, 0.07);
+}
+.leaf-t b { font-family: var(--serif); font-size: 0.98rem; letter-spacing: 0.12em; }
+.leaf-t .mono { margin-left: auto; font-size: 0.56rem; }
+
+.leaf-body { display: flex; flex-direction: column; gap: 0.35rem; }
+
+/* 页码在下角，和真册子一样：左页在左，右页在右 */
+.leaf-no {
+  position: absolute;
+  bottom: 1.2rem;
+  font-family: var(--serif);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.leaf.l .leaf-no { left: 2.2rem; }
+.leaf.r .leaf-no { right: 2.2rem; }
+
+.leaf-empty {
+  margin: auto 0;
+  text-align: center;
+  font-size: 0.56rem;
+  letter-spacing: 0.2em;
+  opacity: 0.6;
+}
+
+/* ─────────────────────────────────────────────────────────
+   相角 与 照片
+
+   相角画在 .mount 上，照片画在 .photo 上 —— 这个分工是整个方向的
+   支点：照片翘起来、被拿走，四个角都不动。
+   ───────────────────────────────────────────────────────── */
+
+.mount {
+  position: relative;
+  max-width: 100%;
+  padding: 9px;
+  margin-bottom: 0.15rem;
+}
+.mount::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, var(--corner) 0 15px, transparent 15px) left top,
+    linear-gradient(225deg, var(--corner) 0 15px, transparent 15px) right top,
+    linear-gradient(45deg,  var(--corner) 0 15px, transparent 15px) left bottom,
+    linear-gradient(315deg, var(--corner) 0 15px, transparent 15px) right bottom;
+  background-size: 21px 21px;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(27, 36, 48, 0.14));
+}
+
+/* 照片被拿走的那一会儿。高度由 album.js 钉住 —— 不钉的话这一格会从
+   216px 塌成 18px，整叶跟着往上跳两百像素，纱底下的相册整个重排，
+   放回来再跳回去。纸不会这样。 */
+.mount.is-lent { background: rgba(27, 36, 48, 0.022); }
+
+/* 四个角在照片进出的那一下张一下又合上 —— 这个方向唯一要说的事就是
+   "相角属于台纸"，那就得让人看见它们留在原地、而且是活的。 */
+@keyframes cornersGive {
+  0%   { transform: scale(1); }
+  34%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.mount.corner-flex::before { animation: cornersGive 560ms var(--spring) both; }
+
+.photo {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+  cursor: zoom-in;
+  transform: rotate(var(--rot, 0deg));
+  box-shadow: 0 9px 20px -13px rgba(27, 36, 48, 0.5);
+  transition: transform 380ms var(--spring), box-shadow var(--slow) var(--soft);
+}
+/* 高度由图自己的比例给，不是 height:100% ——
+   父元素的高度是 aspect-ratio 算出来的，Safari 在"拿百分比高度去解一个
+   由 aspect-ratio 推出来的父高"这件事上会解成 0，整张图就塌成一条看不见
+   的线：版式、相角、说明全在，唯独没有照片。 */
+.photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--ar, 1.5);
+  object-fit: cover;
+  filter: saturate(0.88) brightness(var(--dim));
+  transition: filter var(--slow) var(--soft), transform 620ms var(--soft);
+}
+
+/* 翘起来，但不会离开：贴在相角里的照片能被顶起一点，不能飞走。
+   偏角只松到三成 —— 完全放平会让一页上的两张变得一模一样，而那点
+   歪斜正是"贴上去的"和"排版出来的"之间的区别。 */
+.photo:hover,
+.photo:focus-visible {
+  transform: rotate(calc(var(--rot, 0deg) * 0.3)) translateY(-6px) scale(1.012);
+  box-shadow: 0 22px 34px -17px rgba(27, 36, 48, 0.42);
+}
+.photo:hover img,
+.photo:focus-visible img { filter: saturate(1) brightness(1); transform: scale(1.03); }
+
+/* 按下去要先有回应。给 view transition 拍旧状态要花一两帧，没有这一下
+   的话，从按下到照片开始飞中间有一小段死寂 —— /verse/ 的笺上写着同一
+   条注解。纸被按是往下陷一点，不是弹起来。 */
+.photo:active {
+  transform: rotate(calc(var(--rot, 0deg) * 0.3)) translateY(-1px) scale(0.994);
+  transition: transform 90ms var(--soft);
+}
+
+/* 手写的说明。台纸上的字不会和边框平行。 */
+.hand {
+  margin: 0.5rem 0 0.9rem 0.4rem;
+  font-family: var(--serif);
+  font-size: 0.84rem;
+  line-height: 1.8;
+  color: var(--muted);
+  transform: rotate(-0.35deg);
+  text-wrap: pretty;
+}
+.hand em {
+  display: block;
+  font-style: normal;
+  margin-top: 0.05rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+}
+
+/* ─────────────────────────────────────────────────────────
+   硫酸纸
+
+   真相册每个跨页上压一张。掀开一角是唯一能说明它存在的办法 ——
+   平铺着的话它只是一层白雾。
+   ───────────────────────────────────────────────────────── */
+
+/* 掀开之后它是压在订口里的一条 —— 30px 完全落在台纸 35px 的左边距里，
+   一个字都不挡；能看见的是它的纸边和它投在台纸上的那道影。
+
+   这里没有用 rotateY 去做"立着的一张纸"：绕左边缘转一张整页大的纸，
+   远边会被透视放大成一根一千三百像素高的针，扎出页面之外。压扁成一条、
+   把厚度交给纸边和影子，是更稳也更像的做法 —— 它真正动起来是在翻页
+   那一下：先滑进订口，再跟着台纸被带走。 */
+.glassine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  /* 必须窄于台纸的左内边距（2.2rem = 35px），否则这条 94% 不透明的白
+     会啃掉右页每一行的头一两个字 —— 46px 的时候正是这样 */
+  width: 30px;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.94), rgba(250, 252, 254, 0.66));
+  border-right: 1px solid rgba(27, 36, 48, 0.13);
+  box-shadow: 11px 0 24px -17px rgba(27, 36, 48, 0.45);
+}
+
+/* ─────────────────────────────────────────────────────────
+   翻页
+
+   .turner 有正反两个面，两个面里都是真的一叶（album.js 克隆进去的）。
+   正面是刚才那一页，背面是即将到来的那一页 —— 所以转到一半，看到的
+   是下一页的背影。整叶绕订口转 180°，落下来时新的一页已经在下面了。
+   ───────────────────────────────────────────────────────── */
+
+/* 压页 —— 翻页时，不动的那半边必须继续显示"刚才那一页"。翻页一开始
+   下面的跨页就已经换成新的了（右半边露出来的必须是新的那一页），所以
+   另外半边要用一张旧页的拷贝压住，直到翻动的那一叶整个落在它上面。
+   两者同时撤走，撤走的瞬间下面和上面是同一张纸，看不出接缝。 */
+.holdover {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 6;
+  display: none;
+  overflow: hidden;
+  background: var(--card);
+  pointer-events: none;
+}
+.holdover.on { display: block; }
+.holdover.l { left: 0; }
+.holdover.r { right: 0; }
+.holdover > .leaf { position: absolute; inset: 0; flex: none; overflow: hidden; }
+
+.turner {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 8;
+  display: none;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+.turner.on { display: block; will-change: transform; }
+.turner.on .face { will-change: transform; }
+.turner.f { right: 0; transform-origin: left center; }
+.turner.b { left: 0; transform-origin: right center; }
+
+/* 不要给它 border。box-sizing 是 border-box，1px 的边会把 inset:0 的
+   那一叶整体往里挤 1px —— 于是翻完那一刻，背面上的每一行字都和底下
+   真叶子错开一个像素，撤走时整页"抖"一下。翻动中的那张纸靠背光和
+   透视就够有形了，不需要描边。 */
+.face {
+  position: absolute;
+  inset: 0;
+  /* overflow 不能写在这张脸上。overflow ≠ visible 会把 3D 压扁，
+     backface-visibility 跟着失效，转到一半正反两面叠在一起 —— 那就是
+     翻页中段的重影。裁切交给里面那一叶。 */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  background: var(--card);
+}
+/* 正反两面错开半个像素，避免共面时的 z-fighting（转到 0° / 180°
+   附近两面同时透出来，也是一种重影）。透视 2200 下 0.5px 的缩放
+   不到 0.2 个 CSS 像素，撤走时对不齐不了。 */
+.face.front { transform: translateZ(0.5px); }
+.face.back { transform: rotateY(180deg) translateZ(0.5px); }
+/* 克隆进来的那一叶要撑满整个面：它在书里本来是 flex item */
+.face > .leaf { position: absolute; inset: 0; flex: none; overflow: hidden; }
+
+/* 拷贝里的照片不必再过渡：它们盖住真叶子的那几帧如果还在跑 hover
+   回落，底下抬着、上面平着，就是开始翻页前的一抖。 */
+.turner .photo,
+.turner .photo img,
+.holdover .photo,
+.holdover .photo img { transition: none; }
+
+/* 转过去的时候，翻起来的那一面越来越背光 */
+.face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(27, 36, 48, 0.22), transparent 62%);
+}
+.face.back::after { background: linear-gradient(270deg, rgba(27, 36, 48, 0.22), transparent 62%); }
+
+/* 必须转满 180°。停在 174° 的话，背面和它底下那张真的叶子差 6 度 ——
+   绕订口斜 6 度，远边在 2200 的透视里要被缩放两个多百分点，也就是十来
+   个像素：翻完那一刻，新的一页旁边会露出旧的一页的一条边，然后"啪"地
+   收掉。那条边就是看到的重影。转满了，背面和真叶子逐像素重合，撤走
+   的那一帧什么都不会发生。 */
+@keyframes turnF {
+  from { transform: rotateY(0.01deg); }
+  to   { transform: rotateY(-180deg); }
+}
+@keyframes turnB {
+  from { transform: rotateY(-0.01deg); }
+  to   { transform: rotateY(180deg); }
+}
+/* 同理，背光也要收干净：留 8% 在那儿，撤走时同样是一次跳变 */
+@keyframes turnShade {
+  0%   { opacity: 0; }
+  46%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* 硫酸纸比台纸轻，所以先起 —— 它先滑进订口，再跟着台纸被带走。
+
+   原来这里动的是 width，从 30px 拉到 100%。那是一个**排版**动画：整整
+   620 毫秒，每一帧都要重排重绘，而且是在一个正在做 3D 变换、已经进了
+   合成层的子树里 —— 翻页那一下的卡顿主要就是它。位移和透明度是合成器
+   自己就能做的事，交给它。 */
+@keyframes tissueLift {
+  0%   { transform: none; opacity: 1; }
+  100% { transform: translateX(-24px); opacity: 0; }
+}
+
+/* 动画挂在 .go 上，不是 .on 上：album.js 先用 .on 把三张拷贝摆上去、
+   让浏览器把这一帧排完画完，下一帧才加 .go 开转。 */
+.turner.f.go { animation: turnF 660ms var(--soft) 80ms both; }
+.turner.b.go { animation: turnB 660ms var(--soft) both; }
+.turner.go .face::after { animation: turnShade 660ms var(--soft) 80ms both; }
+.turner.f.go .face.front .glassine { animation: tissueLift 520ms var(--out) both; }
+
+/* ─────────────────────────────────────────────────────────
+   看图位
+
+   和 /verse/ 的读位同一个做法：铺在册子之上，册子在底下原封不动。
+   底色是站点自己的纸色 97% —— 全站没有一处是深色的，一层黑纱会是
+   唯一的例外。
+   ───────────────────────────────────────────────────────── */
+
+.al-lb {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem 7rem;
+}
+.al-lb.on { display: flex; }
+
+.al-veil {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--bg) 97%, transparent);
+  view-transition-name: album-veil;
+}
+
+.al-close {
+  position: fixed;
+  top: 1.6rem;
+  right: 1.8rem;
+  z-index: 4;
+  appearance: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  view-transition-name: album-x;
+  transition: color var(--fast) var(--soft), border-color var(--fast) var(--soft),
+              transform var(--fast) var(--spring);
+}
+.al-close:hover { color: var(--accent); border-color: var(--accent); transform: rotate(90deg); }
+
+.al-frame { display: flex; align-items: center; justify-content: center; }
+
+/* 拿到手上的那一张：没有相角，没有偏角，正着看 */
+.al-frame .photo {
+  width: min(92vw, 1080px, calc(78vh * var(--ar, 1.5)));
+  cursor: zoom-out;
+  transform: none;
+  box-shadow: 0 40px 70px -40px rgba(27, 36, 48, 0.45);
+}
+.al-frame .photo:hover { transform: none; box-shadow: 0 40px 70px -40px rgba(27, 36, 48, 0.45); }
+.al-frame .photo img { filter: saturate(1) brightness(1); transform: none; }
+.al-frame .photo:hover img { transform: none; }
+
+.al-cap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 2.4rem;
+  z-index: 4;
+  text-align: center;
+  view-transition-name: album-cap;
+}
+.al-cap .serif { display: block; font-size: 1.02rem; letter-spacing: 0.04em; }
+.al-cap em { display: block; font-style: normal; margin-top: 0.2rem; }
+
+/* ─────────────────────────────────────────────────────────
+   拿起来 —— 那一段飞行
+
+   main.css 把每个 view transition 都当成一次「导航」：root 淡出，新的
+   root 上浮 8px。页间是对的，这里是错的 —— 没有任何东西导航了，只是
+   一张照片被从相角里拿了出来。所以 album.js 在飞行期间给文档打标记，
+   root 被按住不动，只有被点名的那几样在动。
+   ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  :root.album-swap::view-transition-group(*) {
+    animation-duration: 560ms;
+    animation-timing-function: var(--out);
+  }
+  /* 放回去不是拿起来的倒放：拿起来是慎重的，放回去只是松手 */
+  :root.album-swap.album-back::view-transition-group(*) {
+    animation-duration: 400ms;
+    animation-timing-function: var(--soft);
+  }
+
+  /* ── 谁在上面 ───────────────────────────────────
+     ::view-transition-group() 之间的叠放顺序不看 z-index，看的是名字被
+     采集的顺序。照片在旧状态里就存在（贴在台纸上，画得早），纱是新状态
+     才冒出来的（在 body 最末），于是纱的组排在照片后面 —— 整段飞行里，
+     照片是在那层 97% 的纸色底下爬的，看上去就是一张越放越大的白影。
+
+     组是可以直接给 z-index 的，那就明写出来：纱在最下，照片在中间，
+     ✕ 和说明在最上。 */
+  :root.album-swap::view-transition-group(album-veil) { z-index: 1; }
+  :root.album-swap::view-transition-group(photo-open) { z-index: 2; }
+  :root.album-swap::view-transition-group(album-x),
+  :root.album-swap::view-transition-group(album-cap) { z-index: 3; }
+
+  /* plus-lighter 是交叉淡入的默认混合，在这种纸色上会把中点冲成一片白 */
+  :root.album-swap::view-transition-old(*),
+  :root.album-swap::view-transition-new(*) { mix-blend-mode: normal; }
+
+  /* 照片的两张快照是同一张图，只是一小一大 —— 让它们在整段里慢慢交叉，
+     等于给这次放大蒙了半秒钟的重影。所以交叉只占开头一百八十毫秒：
+     很快落到新的那张上，剩下的近四百毫秒是干干净净的一次放大。
+     台纸上那一度多的歪斜，也正好在这一小段里被盖掉。 */
+  :root.album-swap::view-transition-old(photo-open) { animation: fadeOut 180ms var(--soft) both; }
+  :root.album-swap::view-transition-new(photo-open) { animation: fadeIn 200ms var(--soft) both; }
+  :root.album-swap.album-back::view-transition-old(photo-open) { animation: fadeOut 130ms var(--soft) both; }
+  :root.album-swap.album-back::view-transition-new(photo-open) { animation: fadeIn 150ms var(--soft) both; }
+
+  /* 纱和 ✕ 不是纸：照片到之前它们就该在，照片落回去之前它们就该走 */
+  :root.album-swap::view-transition-old(album-veil),
+  :root.album-swap::view-transition-new(album-veil),
+  :root.album-swap::view-transition-old(album-x),
+  :root.album-swap::view-transition-new(album-x) { animation-duration: 260ms; }
+
+  /* 说明是后到的。照片还在半路上就把字摆好，等于替读者先念了一遍；
+     让它等照片落定再从下面浮上来。 */
+  @keyframes capRise { from { opacity: 0; transform: translateY(10px); } }
+  :root.album-swap::view-transition-new(album-cap) { animation: capRise 380ms var(--out) 320ms both; }
+  :root.album-swap::view-transition-old(album-cap) { animation: fadeOut 150ms var(--soft) both; }
+
+  :root.album-swap::view-transition-old(root),
+  :root.album-swap::view-transition-new(root) {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   没有脚本的时候
+
+   四叶顺着铺下来，仍然是一本能看完的相册 —— 只是不会翻页。所有
+   只有脚本才有意义的东西（翻页条、看图位、翻动的那一叶）都收掉。
+   ───────────────────────────────────────────────────────── */
+
+:root:not(.album-live) .al-book {
+  display: block;
+  height: auto;
+  perspective: none;
+}
+:root:not(.album-live) .al-book::before,
+:root:not(.album-live) .al-book::after,
+:root:not(.album-live) .al-gutter,
+:root:not(.album-live) .glassine,
+:root:not(.album-live) .turner,
+:root:not(.album-live) .al-lb { display: none; }
+:root:not(.album-live) .spread { display: flex; }
+:root:not(.album-live) .leaf { height: auto; border-bottom: 1px solid var(--line); }
+
+/* ─────────────────────────────────────────────────────────
+   窄屏
+
+   一本册子在手机上摊不开，所以只摊开一面：左右页各占满一屏宽，
+   顺着往下排，翻页仍然是翻页 —— 只是一次翻一面而不是一个跨页。
+   ───────────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  :root { --leaf-h: auto; }
+
+  .al-book { display: block; height: auto; perspective: none; }
+  .al-book::before, .al-book::after, .al-gutter, .glassine { display: none; }
+  /* 窄屏高度跟着内容走，不能再把跨页绝对定位叠在一起 */
+  :root.album-live .spread {
+    display: none;
+    position: static;
+    inset: auto;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  :root.album-live .spread.on { display: block; }
+  .leaf { padding: 1.6rem 1.4rem 2.2rem; }
+  .leaf + .leaf { border-top: 1px solid rgba(27, 36, 48, 0.08); }
+  .leaf.l .leaf-no, .leaf.r .leaf-no { left: auto; right: 1.4rem; }
+  .mount { width: 100% !important; }
+
+  /* 立体翻页在窄屏上没有订口可绕，换成整页横着推走 */
+  .turner { display: none !important; }
+  :root.album-live .spread.on { animation: leafSlide 420ms var(--out) both; }
+  @keyframes leafSlide { from { opacity: 0; transform: translateX(var(--dir, 24px)); } }
+
+  .al-lb { padding: 3.4rem 1rem 6rem; }
+  .al-close { top: 1rem; right: 1rem; }
+  .al-frame .photo { width: min(94vw, calc(66vh * var(--ar, 1.5))); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo, .photo img { transition: none; }
+  .mount.corner-flex::before { animation: none; }
+  .turner.f.go, .turner.b.go, .turner.go .face::after,
+  .turner.f.go .face.front .glassine { animation: none; }
+  .turner { display: none !important; }
+  :root.album-live .spread.on { animation: none; }
+}

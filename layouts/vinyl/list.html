@@ -1,0 +1,169 @@
+{{ define "main" }}
+{{/* ═══════════════════════════════════════════════════════════
+     音 · vinyl — 掀盖 / 抽片 / 上盘
+
+     The machine is the page: the records live on a rack, the turntable
+     sits under a hinged acrylic lid, and playing something means opening
+     the lid, lowering a record onto the spindle, shutting it, and letting
+     the arm drop.
+
+     Covers and 30s iTunes previews are vendored by scripts/fetch-covers.py.
+     The machine plays the local clip; Spotify / QQ stay as outbound links.
+     ═══════════════════════════════════════════════════════════ */}}
+
+{{ $css := resources.Get "css/vinyl.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+
+{{ $tracks := sort hugo.Data.music "date" "desc" }}
+
+{{ $items := slice }}
+{{ range $i, $t := $tracks }}
+  {{ $id := "" }}
+  {{ with $t.spotify }}
+    {{ with findRE `track/([A-Za-z0-9]+)` . 1 }}{{ $id = replace (index . 0) "track/" "" }}{{ end }}
+  {{ end }}
+
+  {{ $cover := "" }}{{ $cover2x := "" }}{{ $tone := "#8d939b" }}{{ $preview := "" }}
+  {{ with resources.Get (printf "images/covers/%s.jpg" $id) }}
+    {{ $cover = (.Resize "200x webp q82").RelPermalink }}
+    {{ $cover2x = (.Resize "400x webp q80").RelPermalink }}
+    {{ $picked := "" }}
+    {{ range .Colors }}
+      {{ if and (eq $picked "") (gt .Luminance 0.08) (lt .Luminance 0.55) }}{{ $picked = .ColorHex }}{{ end }}
+    {{ end }}
+    {{ if eq $picked "" }}{{ $picked = (index .Colors 0).ColorHex }}{{ end }}
+    {{ $tone = $picked }}
+  {{ end }}
+  {{ with resources.Get (printf "audio/previews/%s.m4a" $id) }}
+    {{ $preview = (.RelPermalink) }}
+  {{ end }}
+
+  {{ $items = $items | append (dict
+      "i" $i "id" $id "tone" $tone "cover" $cover "cover2x" $cover2x
+      "preview" $preview
+      "title" $t.title "artist" $t.artist "album" ($t.album | default "")
+      "genre" ($t.genre | default "") "date" (string $t.date)
+      "summary" ($t.summary | default "") "note" ($t.note | default "")
+      "spotify" ($t.spotify | default "") "qqmusic" ($t.qqmusic | default "")) }}
+{{ end }}
+
+{{/* No .reveal on the stage: it sits at the top of the page, and the class
+     would take over the scroll timeline the machine needs for its own. */}}
+<section class="vstage" id="vstage" data-lid="closed" data-state="empty" data-arm="parked">
+
+  {{/* ── 唱机 ────────────────────────────────────────────
+       Drawn white with a clear lid rather than the usual black plinth —
+       partly because this site has no dark theme to put a black object in,
+       and partly because the machine that already looks like this (Braun's
+       SK4, white steel and plexiglass) is exactly the right register. The
+       record is then the only dark thing on the page, which is precisely
+       what it should be. */}}
+  <div class="machine" id="machine">
+    <div class="deck3d">
+
+      <div class="plinth">
+        <span class="plinth-face" aria-hidden="true"></span>
+
+        <div class="platter">
+          <span class="platter-mat" aria-hidden="true"></span>
+
+          {{/* the record itself — only here once one has been loaded */}}
+          <div class="vdisc" id="vdisc" aria-hidden="true">
+            <span class="vdisc-grooves"></span>
+            <img class="vdisc-label" id="vdiscLabel" alt="" width="400" height="400">
+            <span class="vdisc-hole"></span>
+          </div>
+
+          <span class="spindle" aria-hidden="true"></span>
+        </div>
+
+        {{/* the cartridge rides inside the rod, so it inherits the rod's
+             angle instead of needing the same rotation kept in step twice */}}
+        <div class="tonearm" id="tonearm" aria-hidden="true">
+          <i class="arm-base"></i>
+          <i class="arm-rod"><i class="arm-head"></i></i>
+        </div>
+
+        <div class="panel" aria-hidden="true">
+          <span class="panel-dot" id="panelDot"></span>
+          <span class="panel-txt mono">33⅓</span>
+        </div>
+      </div>
+
+      {{/* hinged at the back edge; the whole thing is one rotateX */}}
+      <button type="button" class="lid" id="lid" aria-label="打开或合上机盖" aria-pressed="false">
+        <span class="lid-glass" aria-hidden="true"></span>
+        <span class="lid-glint" aria-hidden="true"></span>
+        <span class="lid-front" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <div class="machine-hud">
+      <span class="hud-hint mono" id="hudHint"></span>
+      <div class="hud-now" id="hudNow">
+        <strong id="vTitle">—</strong>
+        <span id="vArtist">当前唱片机中无唱片</span>
+      </div>
+      <div class="hud-bar" id="vScrub"><i></i></div>
+      <div class="hud-time mono"><span id="vPos">0:00</span><span id="vDur">--:--</span></div>
+      <div class="hud-ctl">
+        <button type="button" class="vbtn" id="vPlay" aria-label="播放/暂停" disabled>▶</button>
+        <button type="button" class="vbtn" id="vEject" aria-label="取出唱片" disabled>⏏</button>
+      </div>
+    </div>
+    <audio id="vAudio" preload="auto" playsinline></audio>
+  </div>
+
+  {{/* ── 唱片架 ──────────────────────────────────────────
+       Leaning in a rack the way records actually sit. Pulling one halfway
+       out of its sleeve on hover is the affordance — it says these come
+       out, before you have clicked anything. */}}
+  <div class="rack-wrap">
+    <div class="rack-rule mono"><span>唱片架</span><i>{{ len $items }} 张</i></div>
+
+    <div class="rack" id="rack" role="list">
+      {{ range $items }}
+        <div class="rec" role="listitem" data-i="{{ .i }}" data-id="{{ .id }}"
+             data-title="{{ .title }}" data-artist="{{ .artist }}"
+             data-cover="{{ .cover2x }}" style="--tone:{{ .tone }}">
+          <button type="button" class="rec-grab" aria-label="把《{{ .title }}》放上唱机">
+            {{/* the disc peeking out from behind the sleeve */}}
+            <span class="rec-disc" aria-hidden="true"><i></i></span>
+            <span class="rec-sleeve">
+              {{ if .cover }}
+                <img src="{{ .cover }}" srcset="{{ .cover }} 1x, {{ .cover2x }} 2x"
+                     width="200" height="200" loading="lazy" decoding="async" alt="{{ .album }}">
+              {{ else }}
+                <span class="rec-blank"></span>
+              {{ end }}
+              <span class="rec-spine" aria-hidden="true"></span>
+            </span>
+          </button>
+
+          <div class="rec-meta">
+            <b>{{ .title }}</b>
+            <i>{{ .artist }}</i>
+          </div>
+        </div>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
+{{/* 唱片说明 — whichever record is on the machine, its note is here. This is
+     the one thing the crate cannot show, and it is the actual content. */}}
+<section class="vnote" id="vnote" aria-hidden="true">
+  <div class="vnote-clip">
+    <div class="rule">
+      <h2>关于这张</h2><span class="bar"></span>
+      <span class="rule-note" id="vnoteMeta"></span>
+    </div>
+    <div class="vnote-body" id="vnoteBody"></div>
+    <div class="vnote-links" id="vnoteLinks"></div>
+  </div>
+</section>
+
+<script>window.VINYL = {{ $items | jsonify | safeJS }};</script>
+{{ $js := resources.Get "js/vinyl.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{ end }}

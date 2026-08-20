@@ -1,41 +1,9 @@
-<div class="footer">
-    2026 &copy; Bdathe <span class="cursor">_</span>
-    <span class="footer-shell-hint" data-terminal-trigger role="button" tabindex="0" aria-label="Open shell">press <kbd>Ctrl</kbd>+<kbd>K</kbd> for shell</span>
-</div>
-
-<style>
-.cursor {
-    animation: blink 1s step-end infinite;
-}
-@keyframes blink {
-    50% { opacity: 0; }
-}
-.footer-shell-hint {
-    margin-left: 0.9rem;
-    color: var(--secondary-color);
-    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-    font-size: 0.78rem;
-    opacity: 0.65;
-    cursor: pointer;
-    transition: opacity 0.2s ease, color 0.2s ease;
-}
-.footer-shell-hint:hover {
-    opacity: 1;
-    color: var(--primary-color);
-}
-.footer-shell-hint kbd {
-    padding: 0.05rem 0.35rem;
-    border: 1px solid var(--secondary-color);
-    border-radius: 3px;
-    font-size: 0.72rem;
-}
-</style>
-<script>
-(function () {
-    document.querySelectorAll('.footer-shell-hint').forEach(function (el) {
-        el.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
-        });
-    });
-})();
-</script>
+<footer class="foot">
+  <span class="mono">{{ now.Year }} © {{ .Site.Params.author | default .Site.Title | upper }}</span>
+  <nav class="mono">
+    <a href="{{ "/about/" | relURL }}">关于</a>
+    {{ with .Site.Params.github }}<a href="{{ . }}" target="_blank" rel="noopener">GITHUB</a>{{ end }}
+    {{ with .OutputFormats.Get "RSS" }}<a href="{{ .Permalink }}">RSS</a>{{ end }}
+    <span data-cmdk role="button" tabindex="0" style="cursor:pointer">⌘K 检索</span>
+  </nav>
+</footer>

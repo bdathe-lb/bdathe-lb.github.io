@@ -1,39 +1,53 @@
 baseURL = "https://www.bdathe.wiki/"
-title = "bdathe@home"
-theme = "hugo-theme-console"
+title = "Bdathe"
 locale = "zh-cn"
 hasCJKLanguage = true
+
+# No theme — every layout lives in layouts/, every style in assets/css.
+# The old hugo-theme-console shipped 564K of CSS that is no longer loaded.
 
 [markup]
   [markup.goldmark]
     [markup.goldmark.renderer]
       unsafe = true
+  [markup.highlight]
+    # emit CSS classes instead of inline styles, so code blocks can follow
+    # 晨/昼/暮/夜 like everything else (see assets/css/main.css)
+    noClasses = false
+    lineNos = false
+    tabWidth = 4
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
 
 [params]
-  animateStyle = "animate-fade-up"
-  description = "Bdathe 的个人 wiki —— 计算机笔记、无人机任务分配与路径规划，以及摄影与音乐的数字花园。"
+  description = "Bdathe 的个人 wiki —— 随笔、学习笔记，以及诗、音、影的数字花园。"
   ogimage = "og-default.png"
+  author = "Bdathe"
+  email = "bdathe@outlook.com"
+  github = "https://github.com/bdathe-lb"
 
-[[params.navlinks]]
-  name = "about/"
-  url = "/about/"
-
-[[params.navlinks]]
-  name = "posts/"
+[[params.nav]]
+  name = "文"
+  latin = "writing"
   url = "/posts/"
 
-[[params.navlinks]]
-  name = "slides/"
-  url = "/slides/"
-
-[[params.navlinks]]
-  name = "poems/"
+[[params.nav]]
+  name = "诗"
+  latin = "poems"
   url = "/poems/"
 
-[[params.navlinks]]
-  name = "music/"
+[[params.nav]]
+  name = "音"
+  latin = "music"
   url = "/music/"
 
-[[params.navlinks]]
-  name = "photos/"
+[[params.nav]]
+  name = "影"
+  latin = "photos"
   url = "/photos/"
+
+[[params.nav]]
+  name = "讲"
+  latin = "slides"
+  url = "/slides/"

@@ -1,0 +1,180 @@
+{{ define "main" }}
+{{/* ═══════════════════════════════════════════════════════════
+     影 · 相册 —— 摊开的台纸相册
+
+     /poems/ 把页面变成案上的一堆笺，/music/ 变成一台唱机，/posts/ 变成
+     一个房间里的两件家具。同一个思路放到「影」上，答案是一本相册：
+
+       照片不是"列表里的一项"，是被人一张张贴上去的东西。
+
+     所以这一页只有一件家具，而它的动作就是相册真正的动作 ——
+       翻页：绕订口转过去，硫酸纸比台纸轻，先起 80ms；
+       看图：照片从相角里被拿起来，四个角留在原地。
+
+     两件事都要求「同一个元素换个位置」，而不是重新渲染 —— 这正是
+     same-document view transition 想要的形状，所以 album.js 把整段飞行
+     交给浏览器（和 verse.js 一样）。
+
+     跨页由日期分组算出来：同一个月的照片走同一叶，一叶最多两张，
+     两叶合成一个跨页。数据仍是 data/photos.yaml，一行没改。
+     ═══════════════════════════════════════════════════════════ */}}
+
+{{ $css := resources.Get "css/album.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+
+{{/* 写在书之前，不是之后：.album-live 决定「一次只显示一个跨页」这条规则
+     生效没有。等 album.js 跑完再写，四个跨页会先全部铺开一帧再收起来。
+     跨页 0 的 .on 由模板直接印在标签上，所以在脚本到达之前，页面已经是
+     一本翻开的相册，而不是空的。 */}}
+<script>document.documentElement.classList.add('album-live');</script>
+
+{{ $photos := sort hugo.Data.photos "date" "desc" }}
+
+{{ $mon := slice "" "一月" "二月" "三月" "四月" "五月" "六月"
+                 "七月" "八月" "九月" "十月" "十一月" "十二月" }}
+
+{{/* ── 分叶 ──────────────────────────────────────────────
+     换月就换一叶，一叶满两张也换一叶。先按月分是因为台纸相册本来就是
+     按时间贴的；一叶两张是版面的上限 —— 三张挤进去，说明就没有地方写了。 */}}
+{{ $leaves := slice }}
+{{ $cur := slice }}
+{{ $curKey := "" }}
+{{ range $photos }}
+  {{ $key := (time.AsTime .date).Format "2006-01" }}
+  {{ if or (ne $key $curKey) (ge (len $cur) 2) }}
+    {{ if $cur }}{{ $leaves = $leaves | append (dict "key" $curKey "items" $cur) }}{{ end }}
+    {{ $cur = slice }}
+    {{ $curKey = $key }}
+  {{ end }}
+  {{ $cur = $cur | append . }}
+{{ end }}
+{{ if $cur }}{{ $leaves = $leaves | append (dict "key" $curKey "items" $cur) }}{{ end }}
+
+{{/* 一本书的叶数总是偶数 —— 最后一叶落单时补一张空台纸，而不是让跨页
+     缺半边。空台纸在相册里是常态，缺一面不是。 */}}
+{{ if eq (mod (len $leaves) 2) 1 }}
+  {{ $leaves = $leaves | append (dict "key" "" "items" slice) }}
+{{ end }}
+{{ $spreads := div (len $leaves) 2 }}
+
+<section class="al-wrap" id="alWrap">
+
+  <div class="al-book" id="alBook" data-spread="0">
+    <span class="al-gutter" aria-hidden="true"><i></i></span>
+
+    {{ range $s := seq 0 (sub $spreads 1) }}
+      <div class="spread{{ if eq $s 0 }} on{{ end }}" data-s="{{ $s }}">
+        {{ range $k := seq 0 1 }}
+          {{ $leaf := index $leaves (add (mul $s 2) $k) }}
+          {{ $items := $leaf.items }}
+          {{ $side := cond (eq $k 0) "l" "r" }}
+
+          <div class="leaf {{ $side }}" data-leaf="{{ add (mul $s 2) $k }}">
+
+            {{ if $items }}
+              {{ $first := index $items 0 }}
+              {{ $t := time.AsTime $first.date }}
+              <div class="leaf-t">
+                <b>{{ $t.Format "2006" }} · {{ index $mon (int ($t.Format "1")) }}</b>
+                <span class="mono">{{ printf "%02d" (len $items) }} 张</span>
+              </div>
+
+              <div class="leaf-body">
+                {{ range $i, $p := $items }}
+                  {{/* 台纸的可用宽度 424px；一叶一张时高度给到 452，两张时
+                       各给 232 —— 先按高度算宽，照片就保留自己的比例，
+                       不会被裁成一样的方框。竖幅因此窄，横幅因此宽，
+                       正是贴在台纸上的样子。 */}}
+                  {{ $src := $p.image }}{{ $full := $p.image }}
+                  {{ $ar := 1.5 }}{{ $fw := 0 }}{{ $fh := 0 }}
+                  {{ $res := resources.Get (strings.TrimPrefix "/" $p.image) }}
+                  {{ if and $res (eq $res.ResourceType "image") }}
+                    {{ $ar = div (float $res.Width) (float $res.Height) }}
+                    {{ $thumb := cond (gt $res.Width 900) ($res.Resize "900x webp q82") $res }}
+                    {{ $src = $thumb.RelPermalink }}
+                    {{ $big := cond (gt $res.Width 1800) ($res.Resize "1800x webp q82") $res }}
+                    {{ $full = $big.RelPermalink }}
+                    {{ $fw = $big.Width }}{{ $fh = $big.Height }}
+                  {{ end }}
+                  {{ $maxH := cond (eq (len $items) 1) 448.0 216.0 }}
+                  {{ $w := math.Min 424.0 (mul $maxH $ar) }}
+                  {{/* 每张的偏角对同一张照片永远不变 —— 用题名长度和位次算，
+                       不用随机数：每次构建都换一个角度，等于这本相册每天
+                       自己重贴一遍。 */}}
+                  {{ $rot := mul (sub (mod (add (len $p.title) $i) 5) 2) 0.55 }}
+
+                  <div class="mount" style="width: {{ printf "%.0f" $w }}px">
+                    <a class="photo"
+                       href="{{ $full }}"
+                       style="aspect-ratio: {{ printf "%.4f" $ar }}; --ar: {{ printf "%.4f" $ar }}; --rot: {{ printf "%.2f" $rot }}deg"
+                       data-full="{{ $full }}"
+                       data-w="{{ $fw }}" data-h="{{ $fh }}"
+                       data-title="{{ $p.title }}"
+                       data-caption="{{ $p.caption }}"
+                       data-date="{{ $p.date }}">
+                      {{/* 不 lazy：翻到第二个跨页的那一叶本来就藏在
+                           display:none 里，浏览器不会替藏起来的图排队，
+                           于是翻过去的那一瞬间是空的；而且第一个跨页
+                           在窗口小一点时正好落在首屏下面，一开页就是
+                           四个空相框。七张图统共不到 1MB，不值得。 */}}
+                      {{/* 这里不写 view-transition-name:photo-latest。
+                           /photos/ 上那一条是给"首页的影卡片 → 网格里第一格"
+                           那次跨文档飞行用的；照抄到这一页会要命：带名字的
+                           元素会被从祖先的快照里抠出去单独成组，于是拿起
+                           这张照片时，.photo 的新快照里只剩它自己的白底 ——
+                           整段放大飞的是一张白纸，照片等动画结束才出现。 */}}
+                      <img src="{{ $src }}" decoding="async" alt="{{ $p.title }}">
+                    </a>
+                  </div>
+
+                  {{/* 说明写在照片旁边，略微歪一点 —— 台纸上的字是手写的，
+                       手写的东西不会和边框平行 */}}
+                  <p class="hand">{{ $p.caption }}<em class="mono">{{ $p.title }} · {{ (time.AsTime $p.date).Format "2006.01.02" }}</em></p>
+                {{ end }}
+              </div>
+            {{ else }}
+              {{/* 空台纸 —— 相册末尾本来就有空页，不必假装它满了 */}}
+              <div class="leaf-t"><b>—</b><span class="mono">空页</span></div>
+              <p class="leaf-empty mono">这一面还空着</p>
+            {{ end }}
+
+            <span class="leaf-no">{{ add (mul $s 2) $k 1 }}</span>
+
+            {{/* 硫酸纸 —— 每个右页压一张。它比台纸轻，翻页时先起。 */}}
+            {{ if eq $side "r" }}
+              <span class="glassine" aria-hidden="true"></span>
+            {{ end }}
+          </div>
+        {{ end }}
+      </div>
+    {{ end }}
+
+    {{/* 翻动中的那一叶。正面是刚才那一页，背面是即将到来的那一页 ——
+         两个面都是真节点（album.js 克隆过来的），所以转过去看到的是
+         下一页，而不是一张空卡纸。 */}}
+    <div class="turner" id="alTurner" aria-hidden="true">
+      <div class="face front"></div>
+      <div class="face back"></div>
+    </div>
+  </div>
+</section>
+
+{{/* 看图位 —— 空着，直到有一张照片被拿进来。固定在页面之上而不是排在
+     流里：相册不能因为拿起一张照片就重排，那是纸做不到的事。 */}}
+<div class="al-lb" id="alLb" aria-hidden="true">
+  <div class="al-veil" id="alVeil"></div>
+  <button type="button" class="al-close" id="alClose" aria-label="放回相角里">✕</button>
+  <div class="al-frame" id="alFrame" role="dialog" aria-modal="true" aria-label="看照片"></div>
+  <div class="al-cap" id="alCap">
+    <span class="serif" id="alCapT"></span>
+    <em class="mono" id="alCapM"></em>
+  </div>
+</div>
+
+<p class="visually-hidden" aria-live="polite" id="alLive"></p>
+
+{{/* 不加 defer：脚本一解析到就跑，.album-live 才能在第一帧之前写到
+     <html> 上 —— 否则四个跨页会先全部铺出来再收起，闪一下。 */}}
+{{ $js := resources.Get "js/album.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}"></script>
+{{ end }}

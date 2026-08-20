@@ -1,159 +1,51 @@
 {{ define "main" }}
-<h1>{{ .Title }}</h1>
+<div class="progress" id="progress"></div>
 
-<div class="post-meta">
-    <span class="post-date">{{ .Date | time.Format ":date_medium" }}</span>
-    <span class="post-reading-time">⏳ 预计阅读: {{ .ReadingTime }} 分钟 · ✍️ {{ .WordCount }} 字</span>
-</div>
+<header class="article-head">
+  <div class="article-meta">
+    <span class="mono">{{ .Date.Format "2006.01.02" }}</span>
+    <span class="mono">{{ if eq (.Params.form | default "essay") "note" }}笔记{{ else }}随笔{{ end }}</span>
+    <span class="mono">约 {{ .ReadingTime }} 分钟 · {{ .WordCount }} 字</span>
+  </div>
+  {{/* the other end of this pair is assigned in app.js, on whichever row in
+       the 文 index was actually clicked */}}
+  <h1 style="view-transition-name:articletitle">{{ .Title }}</h1>
+</header>
 
-{{ with .Params.linkedin }}
-    // <a href="{{ . }}">Linkedin</a>
-{{ end }}
-{{ with .Params.twitter }}
-    // <a href="{{ . }}">Twitter</a>
-{{ end }}
+<div class="article-grid">
+  <div class="margin-col">
+    <aside class="marginalia">
+      {{/* the margin holds either a hand-written note or, failing that,
+           the table of contents — never both, it is a margin */}}
+      {{ with .Params.note }}
+        {{ . | markdownify }}
+      {{ else }}
+        {{ with .TableOfContents }}
+          {{ if gt (len .) 60 }}
+            <span class="toc-title">目录</span>{{ . }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    </aside>
+  </div>
 
-<div class="post-content">
+  <article class="prose">
     {{ .Content }}
+
+    <nav class="post-nav">
+      {{ with .NextInSection }}
+        <a class="nav-prev" href="{{ .RelPermalink }}">
+          <span class="nav-label mono">← 上一篇</span>
+          <span class="nav-title">{{ .Title }}</span>
+        </a>
+      {{ end }}
+      {{ with .PrevInSection }}
+        <a class="nav-next" href="{{ .RelPermalink }}">
+          <span class="nav-label mono">下一篇 →</span>
+          <span class="nav-title">{{ .Title }}</span>
+        </a>
+      {{ end }}
+    </nav>
+  </article>
 </div>
-
-<div class="post-navigation">
-    {{ with .NextInSection }}
-    <a class="nav-prev" href="{{ .Permalink }}">
-        <span class="nav-label">&lt; 上一篇</span>
-        <span class="nav-title">{{ .Title }}</span>
-    </a>
-    {{ end }}
-    
-    {{ with .PrevInSection }}
-    <a class="nav-next" href="{{ .Permalink }}">
-        <span class="nav-label">下一篇 &gt;</span>
-        <span class="nav-title">{{ .Title }}</span>
-    </a>
-    {{ end }}
-</div>
-
-{{ template "_internal/disqus.html" . }}
-
-<style>
-/* Post Metadata */
-.post-meta {
-    margin-top: 0.5rem;
-    margin-bottom: 2rem;
-    font-size: 0.9rem;
-    color: var(--secondary-color);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    border-bottom: 1px dashed var(--secondary-color);
-    padding-bottom: 1rem;
-}
-.post-reading-time {
-    opacity: 0.8;
-}
-
-/* Post Navigation */
-.post-navigation {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 4rem;
-    padding-top: 1.5rem;
-    border-top: 1px dashed var(--secondary-color);
-    gap: 1rem;
-}
-.nav-prev, .nav-next {
-    display: flex;
-    flex-direction: column;
-    text-decoration: none;
-    max-width: 48%;
-    transition: transform 0.2s ease;
-    color: inherit;
-}
-.nav-next {
-    text-align: right;
-    margin-left: auto;
-}
-.nav-prev:hover, .nav-next:hover {
-    transform: translateY(-2px);
-    text-decoration: none;
-    background-color: transparent !important; /* Prevent theme's default a:hover background */
-    color: inherit !important; /* Prevent theme's default a:hover text color */
-}
-.nav-label {
-    font-size: 0.8rem;
-    color: var(--secondary-color);
-    margin-bottom: 0.2rem;
-}
-.nav-title {
-    font-weight: bold;
-    color: var(--primary-color);
-}
-.nav-prev:hover .nav-title, .nav-next:hover .nav-title {
-    text-decoration: underline;
-}
-
-/* Code Copy Button Styles */
-.highlight {
-    position: relative;
-}
-.copy-code-button {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    background-color: var(--background-color);
-    border: 1px solid var(--secondary-color);
-    color: var(--secondary-color);
-    padding: 0.2rem 0.5rem;
-    font-size: 0.7rem;
-    border-radius: 4px;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s, background-color 0.2s, color 0.2s;
-    font-family: inherit;
-}
-.highlight:hover .copy-code-button {
-    opacity: 1;
-}
-.copy-code-button:hover {
-    background-color: var(--primary-color);
-    color: var(--background-color);
-    border-color: var(--primary-color);
-}
-.copy-code-button.copied {
-    background-color: #28a745;
-    color: white;
-    border-color: #28a745;
-}
-</style>
-
-<script>
-// Code block copy button logic
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.highlight').forEach((highlightDiv) => {
-        const button = document.createElement('button');
-        button.className = 'copy-code-button';
-        button.type = 'button';
-        button.innerText = 'Copy';
-
-        button.addEventListener('click', () => {
-            const codeBlock = highlightDiv.querySelector('code');
-            if (codeBlock) {
-                navigator.clipboard.writeText(codeBlock.innerText).then(() => {
-                    button.innerText = 'Copied!';
-                    button.classList.add('copied');
-                    setTimeout(() => {
-                        button.innerText = 'Copy';
-                        button.classList.remove('copied');
-                    }, 2000);
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
-                });
-            }
-        });
-
-        highlightDiv.appendChild(button);
-    });
-});
-</script>
-
 {{ end }}

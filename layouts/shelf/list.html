@@ -1,0 +1,276 @@
+{{ define "main" }}
+{{/* ═══════════════════════════════════════════════════════════
+     文 · 书架 —— 一个房间，两件家具
+
+     /poems/ 把页面变成案上的一堆笺，/music/ 把页面变成一台唱机。
+     同一个思路放到「文」上，答案不是一件家具而是两件 —— 因为这一页
+     本来就装着两种东西，而站点自己的引言早就说破了：
+
+         随笔是线性地读，笔记是用来查的。
+
+     线性地读的东西立在书架上：书脊朝外，一本一本，厚薄就是长短。
+     用来查的东西躺在卡片箱里：立着排，只露书口一条，拨开来找。
+
+     两件家具各有各的动作，而且都是那件家具真正的动作 ——
+       书：勾住书顶往外一带（rotateX），抽出来转过来看封面（rotateY）；
+       卡：拇指拨过去让一叠让开（连续的高斯，不是几档），抽一张出来。
+
+     两者共用 main.css 的全部 token，自己只加形状，不加颜色。
+
+     数据来自 content/posts/：随笔上架，笔记进箱。没有的那一件家具不渲染。
+     ═══════════════════════════════════════════════════════════ */}}
+
+{{ $css := resources.Get "css/shelf.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+
+{{/* ── 取数 ────────────────────────────────────────────── */}}
+{{ $pages := slice }}
+{{ with .Site.GetPage "/posts" }}
+  {{ $pages = where .Pages ".Params.private" "!=" true }}
+{{ end }}
+
+{{ $items := slice }}
+{{ range $pages }}
+  {{ $items = $items | append (dict
+      "title" .Title "url" .RelPermalink "date" .Date "year" (.Date.Format "2006")
+      "form" (.Params.form | default "essay")
+      "words" .WordCount "minutes" .ReadingTime
+      "summary" (.Params.summary | default (.Summary | plainify | truncate 96))
+      "tags" (.Params.tags | default slice)) }}
+{{ end }}
+
+{{ $items = sort $items "date" "desc" }}
+{{ $essays := where $items "form" "essay" }}
+{{ $notes  := where $items "form" "note" }}
+
+{{/* 标签 */}}
+{{ $tags := slice }}
+{{ range $items }}{{ range .tags }}{{ if not (in $tags .) }}{{ $tags = $tags | append . }}{{ end }}{{ end }}{{ end }}
+
+{{/* 书脊的厚薄按随笔自己的字数范围拉满 —— 拿全站最长的笔记当尺子，
+     架上的书会挤成一样厚，而厚薄正是这个设计唯一要说的事 */}}
+{{ $eMin := 999999 }}{{ $eMax := 1 }}
+{{ range $essays }}
+  {{ if lt .words $eMin }}{{ $eMin = .words }}{{ end }}
+  {{ if gt .words $eMax }}{{ $eMax = .words }}{{ end }}
+{{ end }}
+{{ $eSpan := math.Max 1 (sub $eMax $eMin) }}
+
+{{ $nMax := 1 }}
+{{ range $notes }}{{ if gt .words $nMax }}{{ $nMax = .words }}{{ end }}{{ end }}
+
+{{/* 一排书架 —— 不是一年一层板。四层板堆起来一千多像素，为了看完架子
+     得一路往下滚，而这一排书本来是要一眼扫过去比厚薄的；竖着堆反而把
+     这个比较拆散了。所以年份改成排在书之间的立隔板，架子只有一层。 */}}
+{{ $eWords := 0 }}{{ range $essays }}{{ $eWords = add $eWords .words }}{{ end }}
+{{ $eYears := slice }}
+{{ range $essays }}{{ if not (in $eYears .year) }}{{ $eYears = $eYears | append .year }}{{ end }}{{ end }}
+
+{{ $row := slice }}{{ $rowY := "" }}
+{{ range $essays }}
+  {{ if ne .year $rowY }}
+    {{ $row = $row | append (dict "kind" "div" "year" .year) }}
+    {{ $rowY = .year }}
+  {{ end }}
+  {{ $row = $row | append (dict "kind" "book" "it" .) }}
+{{ end }}
+
+{{/* 卡片箱：隔板和卡片排成一条，位置由序号乘卡距算出来 */}}
+{{ $seq := slice }}{{ $lastY := "" }}
+{{ range $notes }}
+  {{ if ne .year $lastY }}
+    {{ $seq = $seq | append (dict "kind" "sep" "year" .year) }}
+    {{ $lastY = .year }}
+  {{ end }}
+  {{ $seq = $seq | append (dict "kind" "card" "it" .) }}
+{{ end }}
+
+<div class="wen-tally mono">
+  <span class="k"><i></i>随笔 <b>{{ len $essays }}</b> 本 · 在架上</span>
+  <span class="k n"><i></i>笔记 <b>{{ len $notes }}</b> 张 · 在箱里</span>
+</div>
+
+{{ with $tags }}
+  <div class="filters">
+    <div class="filter-set filter-tags">
+      <button type="button" class="tool" data-tag="all" aria-pressed="true">全部</button>
+      {{ range . }}<button type="button" class="tool tool-tag" data-tag="{{ . }}" aria-pressed="false">{{ . }}</button>{{ end }}
+    </div>
+    <span class="filter-empty mono" id="filterEmpty" hidden>这个标签下没有篇目</span>
+  </div>
+{{ end }}
+
+{{/* ═══ 书架 · 随笔 ═══════════════════════════════════════
+     No .reveal on this section: it sits at the top of the page and the
+     class would hold the whole case at opacity 0 until it scrolled — but
+     it is already on screen when the page opens. The books do their own
+     entrance instead (see .book in shelf.css). */}}
+{{ if $essays }}
+<section class="room" id="roomShelf">
+  <div class="rule">
+    <h2>书架</h2><span class="bar"></span>
+  </div>
+
+  {{/* 一层板。年份是排在书之间的立隔板，比书高出一截 —— 隔板本来就该
+       高出来，不然它就成了一本没写字的书。层板是普通流内元素，不是绝对
+       定位：窄屏上这一排要能横向推，板必须留在滚动区外面。 */}}
+  <div class="case" id="case">
+    <div class="shelf">
+      <span class="shelf-back" aria-hidden="true"></span>
+
+      <div class="books">
+        {{ range $i, $s := $row }}
+          {{ if eq $s.kind "div" }}
+            <span class="divider" aria-hidden="true" style="--i:{{ $i }}">
+              <b class="mono">{{ $s.year }}</b>
+              <i class="mono">{{ len (where $essays "year" $s.year) }} 本</i>
+            </span>
+          {{ else }}
+            {{ $b := $s.it }}
+            {{/* 厚 22–54px：全架最短的书 22，最长的 54 */}}
+            {{ $w := add 22 (mul (div (float (sub $b.words $eMin)) $eSpan) 32) }}
+            {{/* 高度按题名长度定，只为了让一排书高低不齐 —— 真书架就是这样，
+                 而且这个值对同一篇永远不变，不会每次构建都跳 */}}
+            {{ $h := add 186 (mul (mod (len $b.title) 4) 12) }}
+            {{/* 书脊的深浅：题名长度 + 排上位次。不要拿字数取模 —— 字数几乎
+                 总是一百的倍数，mod 5 恒为 0，一排书会印成同一个颜色。 */}}
+            {{ $t := add 5 (mul (mod (add (len $b.title) $i) 5) 5) }}
+            <a class="book"
+               href="{{ $b.url }}"
+               style="--w:{{ printf "%.0f" $w }}px; --h:{{ $h }}px; --tint:{{ $t }}%; --i:{{ $i }}"
+               data-title="{{ $b.title }}"
+               data-date="{{ $b.date.Format "2006.01.02" }}"
+               data-words="{{ $b.words }}"
+               data-minutes="{{ $b.minutes }}"
+               data-summary="{{ $b.summary }}"
+               data-tags="{{ delimit $b.tags "|" }}"
+               data-url="{{ $b.url }}"
+               aria-label="{{ $b.title }} · {{ $b.words }} 字">
+              {{/* 书脊 —— 架上唯一看得见的那一面 */}}
+              <span class="spine" aria-hidden="true">
+                <span class="spine-t">{{ $b.title }}</span>
+                <span class="spine-mark"></span>
+              </span>
+              {{/* 封面 —— 合在架上时和屏幕垂直，等于不存在；
+                   抽出来转过身才朝向读者 */}}
+              <span class="cover" aria-hidden="true">
+                <span class="cover-k mono">随笔</span>
+                <span class="cover-t">{{ $b.title }}</span>
+                <span class="cover-rule"></span>
+                <span class="cover-m mono">{{ $b.words }} 字 · {{ $b.minutes }} 分钟</span>
+                <span class="cover-d mono">{{ $b.date.Format "2006.01.02" }}</span>
+              </span>
+            </a>
+          {{ end }}
+        {{ end }}
+
+        <span class="bookend" aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <span class="shelf-board" aria-hidden="true">
+      <b class="mono">{{ index $eYears (sub (len $eYears) 1) }} — {{ index $eYears 0 }}</b>
+      <i class="mono">{{ len $essays }} 本 · {{ lang.FormatNumber 0 $eWords }} 字</i>
+    </span>
+  </div>
+
+  {{/* 摊开 —— 抽出一本才长开。空着时不占地方，也不再写操作说明。 */}}
+  <div class="readpost" id="readpost" data-state="empty" aria-live="polite">
+    <div class="rp-bar">
+      <span class="rp-hint mono" id="rpHint"></span>
+      <button type="button" class="rp-back mono" id="rpBack">放回架上</button>
+    </div>
+    <div class="rp-more"><div>
+      <div class="rp-in">
+        <div class="rp-text">
+          <span class="rp-k mono" id="rpK">随笔</span>
+          <h3 id="rpT"></h3>
+          <p class="rp-s" id="rpS"></p>
+        </div>
+        <div class="rp-side">
+          <div class="rp-m mono" id="rpM"></div>
+          <div class="rp-tags" id="rpTags"></div>
+          <a class="rp-go mono" id="rpGo" href="#">读全文 <span>→</span></a>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</section>
+{{ end }}
+
+{{/* ═══ 卡片箱 · 笔记 ═══════════════════════════════════ */}}
+{{ if $notes }}
+<section class="room reveal" id="roomBox">
+  <div class="rule">
+    <h2>卡片箱</h2><span class="bar"></span>
+    <span class="rule-note mono">笔记 · 用来查的 · 扫过去翻，拖动整排</span>
+    <button type="button" class="nudge" id="navL" aria-label="往前翻">‹</button>
+    <button type="button" class="nudge" id="navR" aria-label="往后翻">›</button>
+  </div>
+
+  <div class="tray" id="tray">
+    <div class="box">
+      <span class="box-back" aria-hidden="true"></span>
+      <span class="box-floor" aria-hidden="true"></span>
+
+      <div class="slots" id="slots">
+        {{ range $i, $s := $seq }}
+          {{ $x := mul $i 76 }}
+          {{ if eq $s.kind "sep" }}
+            <div class="slot sep" style="--x:{{ $x }}px; --i:{{ $i }}" aria-hidden="true">
+              <span class="sep-body"></span>
+              <span class="sep-tab mono">{{ $s.year }}</span>
+              <span class="sep-n">{{ len (where $notes "year" $s.year) }} 张</span>
+            </div>
+          {{ else }}
+            {{ $n := $s.it }}
+            {{ $wp := mul (div (float $n.words) $nMax) 100 }}
+            <a class="slot card"
+               href="{{ $n.url }}"
+               style="--x:{{ $x }}px; --i:{{ $i }}"
+               data-tags="{{ delimit $n.tags "|" }}"
+               data-words="{{ $n.words }}"
+               data-year="{{ $n.year }}"
+               aria-label="{{ $n.title }} · {{ $n.words }} 字">
+              <span class="card-face">
+                <span class="card-band"></span>
+                <span class="card-edge">
+                  <span class="card-title">{{ $n.title }}</span>
+                  <span class="wbar" style="--wp:{{ printf "%.0f" $wp }}%"><i></i></span>
+                </span>
+                <span class="card-when mono">{{ $n.date.Format "2006.01.02" }}</span>
+                <span class="card-body">
+                  <span class="card-kicker mono">笔记 · NOTE</span>
+                  <span class="card-sum">{{ $n.summary }}</span>
+                  <span class="card-tags">{{ range $n.tags }}<span>{{ . }}</span>{{ end }}</span>
+                  <span class="card-len mono"><span>{{ $n.words }} 字</span><span>{{ $n.minutes }} 分钟</span></span>
+                </span>
+                <span class="card-go mono">读全文 <span>→</span></span>
+              </span>
+            </a>
+          {{ end }}
+        {{ end }}
+      </div>
+    </div>
+
+    <span class="cap cap-l" aria-hidden="true"></span>
+    <span class="cap cap-r" aria-hidden="true"></span>
+    <span class="tray-lip" aria-hidden="true"></span>
+  </div>
+
+  {{/* 索引条 —— 一格一篇，高即字数，点一格直接抽出那张 */}}
+  <div class="indexbar">
+    <div class="ticks" id="ticks"></div>
+    <div class="indexbar-foot mono">
+      <span>索引条 · 一格一张 · 高即字数</span>
+      <span id="boxFoot">{{ len $notes }} 张</span>
+    </div>
+  </div>
+</section>
+{{ end }}
+
+<p class="visually-hidden" aria-live="polite" id="shelfLive"></p>
+
+{{ $js := resources.Get "js/shelf.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{ end }}

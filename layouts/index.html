@@ -1,169 +1,482 @@
 {{ define "main" }}
+{{/* ═══════════════════════════════════════════════════════════
+     案头 —— 首页
 
-<h1>About</h1>
+     一张靠窗的书桌，桌上五件物件通往五个栏目；底下是近作的六张
+     卡片，和一条行迹。
 
-<div class="home-hero" id="home-hero">
-    <pre class="home-hero-screen" aria-hidden="true"><span class="home-hero-line"><span class="home-hero-prompt">~$</span> <span class="home-hero-typed" data-hero-typed></span><span class="home-hero-cursor">_</span></span></pre>
-    <p class="home-hero-fallback">
-    Bdathe — CS grad student, focused on UAV task allocation &amp; path planning.
-    A digital garden to consolidate notes, photos, and music.
-    <a href="about/">(more)</a>
-    </p>
-</div>
+     整张图是一幅白描：全部由 stroke 画出来，fill 只用来让物件挡住它
+     后面的桌沿线。线条走 feTurbulence 位移，所以每一根都有一点手抖 ——
+     这是最便宜也最有效的一条"不是机器画的"信号。上一版把同一张桌子
+     画成了玻璃圆角卡片套圆角面板、里面全是灰色渐变塑料，那股"AI 味"
+     就是这么来的：没有材质，没有笔触，只有柔和的渐变和大投影。
 
-<style>
-.home-hero {
-    margin: 0.2rem 0 1.4rem;
-}
-.home-hero-screen {
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border: 0;
-    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-    font-size: 1rem;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    overflow-wrap: break-word;
-    min-height: 3.4em;
-}
-.home-hero-line { display: block; }
-/* live prompt: bright; committed history: dim & light — like a real shell */
-.home-hero-prompt {
-    color: var(--primary-color);
-    font-weight: bold;
-}
-.home-hero-line--done .home-hero-prompt {
-    color: var(--secondary-color);
-    font-weight: normal;
-}
-.home-hero-out { color: var(--font-color); }
-.home-hero-cursor {
-    display: inline-block;
-    margin-left: 1px;
-    color: var(--primary-color);
-    animation: heroBlink 1s step-end infinite;
-}
-@keyframes heroBlink { 50% { opacity: 0; } }
-.home-hero-fallback { display: none; margin: 0; }
-@media (prefers-reduced-motion: reduce) {
-    .home-hero-screen { display: none; }
-    .home-hero-fallback { display: block; }
-}
-</style>
+     时刻是整幅图的一个参数，不是画上去的装饰：日头沿窗口的弧线走，
+     两道光线跟着斜过去，桌上的光斑跟着挪，物件脚下的排线影子跟着
+     翻边。夜里日头换成月牙，天空换成几颗星。全部由 home.js 从同一个
+     分钟数算出来 —— 和页面背景读的是同一个钟。
 
-<script>
-(function () {
-    var screen = document.querySelector('.home-hero-screen');
-    var typedEl = document.querySelector('[data-hero-typed]');
-    if (!screen || !typedEl) return;
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+     样式 assets/css/home.css，脚本 assets/js/home.js，都只有这一页加载。
+     ═══════════════════════════════════════════════════════════ */}}
 
-    // A short script of commands -> output, typed out like a real shell.
-    var steps = [
-        { cmd: 'whoami', out: 'Bdathe — CS grad student · UAV task allocation & path planning' },
-        { cmd: 'echo $MOTTO', out: 'What I cannot create, I do not understand.' }
-    ];
+{{ $css := resources.Get "css/home.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
 
-    var lines = [];        // committed output lines (HTML)
-    var step = 0;
-    var typeSpeed = 55, outDelay = 450, nextDelay = 1100;
+{{- $posts := sort (where (.Site.GetPage "/posts").Pages ".Params.private" "!=" true) "Date" "desc" -}}
+{{- $latestPost := index $posts 0 -}}
+{{- $poems := sort hugo.Data.poems "date" "desc" -}}
+{{- $tracks := sort hugo.Data.music "date" "desc" -}}
+{{- $photos := sort hugo.Data.photos "date" "desc" -}}
+{{- $latestPoem := index $poems 0 -}}
+{{- $latestTrack := index $tracks 0 -}}
+{{- $latestPhoto := index $photos 0 -}}
 
-    function render(typing) {
-        var html = lines.join('');
-        html += '<span class="home-hero-line"><span class="home-hero-prompt">~$</span> '
-              + '<span class="home-hero-typed">' + escapeHtml(typing) + '</span>'
-              + '<span class="home-hero-cursor">_</span></span>';
-        screen.innerHTML = html;
-    }
-    function escapeHtml(s) {
-        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+<section class="st-hero">
 
-    function typeCmd() {
-        if (step >= steps.length) { render(''); return; }
-        var cmd = steps[step].cmd, i = 0;
-        (function tick() {
-            render(cmd.slice(0, i));
-            if (i < cmd.length) { i++; setTimeout(tick, typeSpeed); }
-            else { setTimeout(showOut, outDelay); }
-        })();
-    }
-    function showOut() {
-        var s = steps[step];
-        lines.push('<span class="home-hero-line home-hero-line--done"><span class="home-hero-prompt">~$</span> '
-                 + escapeHtml(s.cmd) + '</span>');
-        lines.push('<span class="home-hero-line home-hero-out">' + escapeHtml(s.out) + '</span>');
-        step++;
-        render('');
-        setTimeout(typeCmd, nextDelay);
-    }
+  {{/* 图占满整幅。没有外框，直接落在纸上 —— 这是这一版和旧首页最大的
+       一处不同。不加 .reveal：它在首屏，本来就没有什么可以"揭开"的，而且
+       这个 class 会占掉元素自己的 scroll timeline，而下面的退场动画正需要
+       那条。 */}}
+  <div class="st-world" id="stWorld">
+    <div class="st-plate" id="stPlate" data-night="off">
+      {{/* viewBox 的下沿收到桌子底下 12 个单位就停 —— 原来到 400，桌沿在
+           336，底下那 56 个单位是空的；图一满幅，那截空白就成了桌子和下面
+           那行注脚之间一道说不清的缝。 */}}
+      <svg class="st-svg" id="stSvg" viewBox="0 0 600 356" preserveAspectRatio="xMidYMax meet"
+           role="img" aria-labelledby="stSvgTitle">
+        <title id="stSvgTitle">一张靠窗的书桌，桌上摆着五件通往各栏目的物件</title>
 
-    render('');
-    setTimeout(typeCmd, 500);
-})();
-</script>
+        <defs>
+          {{/* 手抖。scale 再大一点线就散成毛边了，1.6 是"人画的"和"没画好"
+               之间的位置。只作用在静态线稿上 —— 会一直动的东西（茶烟、
+               叶子、尘）放在滤镜外面，否则每一帧都要重算整幅图。 */}}
+          <filter id="stInk" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="2" seed="9" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+          <clipPath id="stGlass">
+            <path d="M246 224 V128 A100 100 0 0 1 446 128 V224 Z"/>
+          </clipPath>
+        </defs>
 
-<h1>Latest posts</h1>
+        {{/* ── 静态线稿。整组走手抖滤镜 ── */}}
+        <g filter="url(#stInk)">
 
-<div class="posts-list">
-{{ with .Site.GetPage "/posts" }}
-    {{ range first 3 (sort .Pages "Date" "desc" (where .Pages ".Params.private" "!=" true))}}
-        <div class="post">
-            <p>
-                <div class="date">{{ .Date | time.Format ":date_medium" }}</div>
-                <h1><a href="{{ .Permalink }}" title="{{ .Title }}">{{ .Title }}</a></h1>
-                {{ .Summary }}
-            </p>
-        </div>    
-    {{ end }}
-{{ end }}
-</div>
+          {{/* 窗外：天、山、日月。夹在玻璃里 */}}
+          <g class="st-sky" clip-path="url(#stGlass)">
+            <g class="st-ink st-faint st-draw" style="--d:640">
+              <path pathLength="1" d="M270 66 H316"/>
+              <path pathLength="1" d="M286 82 H360"/>
+              <path pathLength="1" d="M378 74 H420"/>
+              <path pathLength="1" d="M262 100 H300"/>
+              <path pathLength="1" d="M252 192 H316"/>
+              <path pathLength="1" d="M356 186 H432"/>
+            </g>
+            <g class="st-ink st-faint st-draw" style="--d:760">
+              <path pathLength="1" d="M246 210 C270 194, 296 196, 318 208"/>
+              <path pathLength="1" d="M302 212 C330 188, 366 192, 394 210"/>
+              <path pathLength="1" d="M378 211 C402 200, 428 202, 446 209"/>
+            </g>
 
-<h1>Latest photos</h1>
-<style>
-.home-photo-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-}
-.home-photo-item {
-    overflow: hidden;
-    border-radius: 4px;
-    border: 1px solid var(--secondary-color);
-    display: block;
-}
-.home-photo-item img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    display: block;
-    transition: transform 0.4s ease, filter 0.4s ease;
-    filter: brightness(0.9);
-}
-.home-photo-item:hover img {
-    transform: scale(1.05);
-    filter: brightness(1.1);
-}
-</style>
-<div class="home-photo-grid">
-    {{ range first 3 (sort hugo.Data.photos "date" "desc") }}
-        {{ $imgPath := strings.TrimPrefix "/" .image }}
-        {{ $res := resources.Get $imgPath }}
-        {{ $thumbSrc := .image }}
-        {{ if $res }}
-            {{ if eq $res.ResourceType "image" }}
-                {{ $thumb := $res.Fill "400x300 webp q80" }}
-                {{ $thumbSrc = $thumb.RelPermalink }}
-            {{ else }}
-                {{ $thumbSrc = $res.RelPermalink }}
-            {{ end }}
+            {{/* 日 / 月。位置由 home.js 写进 --ox / --oy —— 和页面背景读的是
+                 同一个分钟数，所以窗里的时刻和纸的颜色永远对得上。 */}}
+            <g class="st-orb" id="stOrb">
+              <g class="orb-sun">
+                <path d="M-12 0 A12 12 0 1 0 12 0 A12 12 0 1 0 -12 0"/>
+                <path d="M0 -18 V-23 M0 18 V23 M-18 0 H-23 M18 0 H23"/>
+                <path d="M-13 -13 L-16 -16 M13 13 L16 16 M13 -13 L16 -16 M-13 13 L-16 16"/>
+              </g>
+              <g class="orb-moon">
+                <path d="M4 -12 A12.6 12.6 0 1 0 4 12 A15 15 0 0 1 4 -12 Z"/>
+              </g>
+            </g>
+
+            <g class="st-stars">
+              <path d="M268 52 h6 M271 49 v6"/>
+              <path d="M322 40 h6 M325 37 v6"/>
+              <path d="M392 56 h6 M395 53 v6"/>
+              <path d="M424 96 h6 M427 93 v6"/>
+              <path d="M258 112 h6 M261 109 v6"/>
+              <path d="M370 106 h6 M373 103 v6"/>
+            </g>
+          </g>
+
+          {{/* 窗 —— 这幅画里唯一一件建筑，所以整个"地点感"都压在它身上 */}}
+          <g class="st-ink st-draw" style="--d:180">
+            <path pathLength="1" d="M236 224 V128 A110 110 0 0 1 456 128 V224"/>
+            <path pathLength="1" d="M246 224 V128 A100 100 0 0 1 446 128 V224"/>
+            <path pathLength="1" d="M346 22 V224"/>
+            <path pathLength="1" d="M246 160 H446"/>
+            <path pathLength="1" d="M220 224 H472 M220 231 H472 M220 224 V231 M472 224 V231"/>
+          </g>
+
+          {{/* 光 —— 两道从窗台斜下来的线。home.js 把 --ray 拧到日头的反向：
+               早上的太阳在东边，光就落到屋子的西边去。 */}}
+          <g class="st-rays" id="stRays">
+            <g class="st-draw" style="--d:1020">
+              <path pathLength="1" d="M276 231 V336"/>
+              <path pathLength="1" d="M386 231 V336"/>
+            </g>
+          </g>
+
+          {{/* 桌沿 —— 一根线，加一条厚度。两头都出画，桌子才像是还长在外面 */}}
+          <g class="st-ink st-draw" style="--d:0">
+            <path pathLength="1" d="M-300 336 H900"/>
+            <path pathLength="1" d="M-300 344 H900"/>
+          </g>
+
+          {{/* 桌上的光斑：跟着光线一起斜，跟着日头一起挪 */}}
+          <g class="st-patch st-ink st-faint" id="stPatch">
+            <path d="M-58 322 V335 M-44 321 V335 M-30 320 V335 M-15 320 V335 M0 319 V335 M15 320 V335 M30 320 V335 M44 321 V335 M58 322 V335"/>
+          </g>
+
+          {{/* ── 桌上的物件。五件，五个栏目 ── */}}
+          <g class="st-things">
+
+            {{/* 文 —— 一本摊开的书 */}}
+            <a class="stobj" href="{{ "/posts/" | relURL }}" transform="translate(62 336)"
+               data-kicker="文 · WRITING" data-title="{{ $latestPost.Title }}"
+               data-meta="{{ $latestPost.Date.Format "2006.01.02" }} · 最近写下">
+              <title>文 · 随笔与笔记</title>
+              <g class="st-lift">
+                <g class="st-shade st-faint"><path d="M8 -1 H56 M10 -4 H48 M12 -7 H38"/></g>
+                <g class="st-ink st-draw" style="--d:420">
+                  <path pathLength="1" class="st-fill" d="M-5 -46 C-22 -35, -43 -18, -59 -5 L-52 0 C-36 -12, -20 -27, -5 -38 Z"/>
+                  <path pathLength="1" class="st-fill" d="M5 -46 C22 -35, 43 -18, 59 -5 L52 0 C36 -12, 20 -27, 5 -38 Z"/>
+                  <path pathLength="1" d="M0 -47 V-40"/>
+                </g>
+                {{/* 页。两叶都是弯的 —— 直边的 Λ 是帐篷，纸会塌下去，这一条
+                     弧是"这是一本书"唯一说得清的地方。字也一样：上一版拿两根
+                     贯穿整叶的长斜线当字，长线是结构，短线才是字。 */}}
+                <g class="st-ink st-faint st-draw" style="--d:560">
+                  <path pathLength="1" d="M-54 -4 C-38 -15, -23 -29, -9 -39"/>
+                  <path pathLength="1" d="M-45 -13 C-40 -16, -35 -20, -31 -23 M-38 -9 C-32 -13, -26 -17, -22 -21"/>
+                  <path pathLength="1" d="M54 -4 C38 -15, 23 -29, 9 -39"/>
+                  <path pathLength="1" d="M45 -13 C40 -16, 35 -20, 31 -23 M38 -9 C32 -13, 26 -17, 22 -21"/>
+                </g>
+                <text class="st-tag" x="0" y="-60">文</text>
+              </g>
+            </a>
+
+            {{/* 诗 —— 一张立着的笺，字是竖排的 */}}
+            <a class="stobj" href="{{ "/poems/" | relURL }}" transform="translate(154 336)"
+               data-kicker="诗 · POEMS" data-title="{{ $latestPoem.excerpt }}"
+               data-meta="{{ $latestPoem.author }} · {{ $latestPoem.title }}">
+              <title>诗 · 案上的五张笺</title>
+              <g class="st-lift">
+                <g class="st-shade st-faint"><path d="M8 -1 H34 M10 -4 H28 M12 -7 H22"/></g>
+                <g class="st-ink st-draw" style="--d:480">
+                  <path pathLength="1" class="st-fill" d="M-19 0 C-21 -20, -18 -40, -20 -52 L-10 -62 C0 -63, 10 -63, 19 -60 C17 -40, 20 -20, 18 0 C7 3, -8 3, -19 0 Z"/>
+                  <path pathLength="1" d="M-10 -62 L-12 -53 L-20 -52"/>
+                </g>
+                {{/* 竖排。第一行在右边，所以左边那一列先写完 —— 这样它才像
+                     一首写完了的词，而不是三条等长的线。 */}}
+                <g class="st-ink st-faint st-draw" style="--d:620">
+                  <path pathLength="1" d="M10 -54 v8 M10 -42 v8 M10 -30 v8 M10 -18 v7"/>
+                  <path pathLength="1" d="M0 -54 v8 M0 -42 v8 M0 -30 v8 M0 -18 v7"/>
+                  <path pathLength="1" d="M-10 -46 v8 M-10 -34 v8 M-10 -22 v6"/>
+                </g>
+                <text class="st-tag" x="0" y="-77">诗</text>
+              </g>
+            </a>
+
+            {{/* 音 —— 唱片从套里抽出一半 */}}
+            <a class="stobj" href="{{ "/music/" | relURL }}" transform="translate(232 336)"
+               data-kicker="音 · MUSIC" data-title="{{ $latestTrack.title }}"
+               data-meta="{{ $latestTrack.artist }} · 最近在听">
+              <title>音 · 唱机与唱片架</title>
+              <g class="st-lift">
+                <g class="st-shade st-faint"><path d="M8 -1 H50 M10 -4 H42 M12 -7 H34"/></g>
+                <g class="st-ink st-draw" style="--d:540">
+                  <path pathLength="1" class="st-fill" d="M-46 0 L-41 -76 L34 -76 L29 0 Z"/>
+                  <path pathLength="1" d="M-42 -66 L33 -66"/>
+                </g>
+                <g class="st-disc">
+                  <g class="st-ink st-draw" style="--d:680">
+                    <path pathLength="1" class="st-fill" d="M-22 -40 A34 34 0 1 0 46 -40 A34 34 0 1 0 -22 -40"/>
+                    <path pathLength="1" d="M0 -40 A12 12 0 1 0 24 -40 A12 12 0 1 0 0 -40"/>
+                  </g>
+                  <g class="st-ink st-faint st-draw" style="--d:800">
+                    <path pathLength="1" d="M-14 -40 A26 26 0 0 1 38 -40"/>
+                    <path pathLength="1" d="M-6 -40 A18 18 0 0 1 30 -40"/>
+                    <path pathLength="1" d="M10.4 -40 A1.6 1.6 0 1 0 13.6 -40 A1.6 1.6 0 1 0 10.4 -40"/>
+                  </g>
+                </g>
+                <text class="st-tag" x="0" y="-90">音</text>
+              </g>
+            </a>
+
+            {{/* 影 —— 相机 */}}
+            <a class="stobj" href="{{ "/photos/" | relURL }}" transform="translate(340 336)"
+               data-kicker="影 · PHOTOS" data-title="{{ $latestPhoto.caption | default $latestPhoto.title }}"
+               data-meta="{{ $latestPhoto.date }} · 共 {{ len $photos }} 张">
+              <title>影 · 一本摊开的相册</title>
+              <g class="st-lift">
+                <g class="st-shade st-faint"><path d="M8 -1 H46 M10 -4 H40 M12 -7 H30"/></g>
+                <g class="st-ink st-draw" style="--d:600">
+                  <path pathLength="1" class="st-fill" d="M-41 0 L-41 -32 Q-41 -37 -36 -37 L-27 -37 L-22 -47 L3 -47 L8 -37 L36 -37 Q41 -37 41 -32 L41 0 Z"/>
+                  <path pathLength="1" d="M-12 -17 A15 15 0 1 0 18 -17 A15 15 0 1 0 -12 -17"/>
+                </g>
+                <g class="st-ink st-faint st-draw" style="--d:740">
+                  <path pathLength="1" d="M-4.5 -17 A7.5 7.5 0 1 0 10.5 -17 A7.5 7.5 0 1 0 -4.5 -17"/>
+                  <path pathLength="1" d="M25 -37 V-42 H33 V-37"/>
+                  <path pathLength="1" d="M-32 -27 H-24"/>
+                </g>
+                <text class="st-tag" x="0" y="-61">影</text>
+              </g>
+            </a>
+
+            {{/* 讲 —— 一块立着的讲稿板 */}}
+            <a class="stobj" href="{{ "/slides/" | relURL }}" transform="translate(490 336)"
+               data-kicker="讲 · SLIDES" data-title="把想明白的事，讲给别人听。"
+               data-meta="讲稿与演示 · 打开讲稿室">
+              <title>讲 · 讲稿与演示</title>
+              <g class="st-lift">
+                <g class="st-shade st-faint"><path d="M8 -1 H40 M10 -4 H34 M12 -7 H26"/></g>
+                <g class="st-ink st-draw" style="--d:660">
+                  <path pathLength="1" class="st-fill" d="M-30 0 L-30 -60 L30 -60 L30 0 Z"/>
+                  <path pathLength="1" d="M13 -10 L27 0"/>
+                </g>
+                <g class="st-ink st-faint st-draw" style="--d:800">
+                  <path pathLength="1" d="M-20 -50 H3"/>
+                  <path pathLength="1" d="M-20 -40 H18 M-20 -33 H10 M-20 -26 H20"/>
+                  <path pathLength="1" d="M-20 -17 H-5"/>
+                </g>
+                <text class="st-tag" x="0" y="-74">讲</text>
+              </g>
+            </a>
+          </g>
+
+          {{/* ── 摆件。不能点，只是有人在这儿的痕迹 ── */}}
+          <g class="st-props st-ink st-draw" style="--d:900" aria-hidden="true">
+            <g transform="translate(412 336)">
+              <path pathLength="1" class="st-fill" d="M-16 -2 C-16 -17, -15 -25, -14 -31 L14 -31 C15 -25, 16 -17, 16 -2 C9 2, -9 2, -16 -2 Z"/>
+              <path pathLength="1" d="M16 -25 C28 -25, 28 -10, 16 -10"/>
+            </g>
+            <g transform="translate(556 336)">
+              <path pathLength="1" class="st-fill" d="M-16 0 L-12 -22 L12 -22 L16 0 Z"/>
+              <path pathLength="1" d="M-14 -16 H14"/>
+            </g>
+          </g>
+        </g>
+
+        {{/* ── 一直在动的东西。留在滤镜外面 ── */}}
+        <g class="st-alive" aria-hidden="true">
+          <g class="st-steam st-ink st-faint" transform="translate(412 336)">
+            <path d="M-5 -38 C-11 -46, 0 -51, -6 -60"/>
+            <path d="M7 -36 C1 -44, 12 -49, 6 -57"/>
+          </g>
+          {{/* 叶子是五片开叉的，不是"茎顶上一个闭合的圈" —— 闭合的圈画出来
+               是气球。白描里叶子就是一笔，收在尖上。 */}}
+          <g class="st-leaves st-ink" transform="translate(556 336)">
+            <path class="lf a" d="M0 -22 C-5 -33, -13 -41, -21 -45"/>
+            <path class="lf a" d="M0 -22 C-4 -32, -9 -42, -14 -55"/>
+            <path class="lf b" d="M0 -22 C-2 -38, -2 -50, -4 -62"/>
+            <path class="lf c" d="M0 -22 C3 -34, 9 -44, 16 -50"/>
+            <path class="lf c" d="M0 -22 C2 -32, 5 -43, 8 -57"/>
+          </g>
+          <g class="st-motes" id="stMotes">
+            <circle r="1.8" cx="300" cy="300" style="--n:1"/>
+            <circle r="1.4" cx="326" cy="270" style="--n:2"/>
+            <circle r="2" cx="312" cy="320" style="--n:3"/>
+            <circle r="1.5" cx="348" cy="290" style="--n:4"/>
+            <circle r="1.7" cx="288" cy="278" style="--n:5"/>
+            <circle r="1.3" cx="356" cy="312" style="--n:6"/>
+          </g>
+        </g>
+      </svg>
+
+    </div>
+
+    {{/* 图底下一条发丝线，两头各站一样东西：左边是这座园子有多少东西
+         （一条内容一划，五划一组 —— 墨划不用读，一眼就是个数），右边是
+         被指着的那一件。 */}}
+    <div class="st-foot">
+      <div class="st-tally reveal">
+        {{ range slice
+            (dict "g" "文" "n" (len $posts)  "u" ("/posts/"  | relURL))
+            (dict "g" "诗" "n" (len $poems)  "u" ("/poems/"  | relURL))
+            (dict "g" "音" "n" (len $tracks) "u" ("/music/"  | relURL))
+            (dict "g" "影" "n" (len $photos) "u" ("/photos/" | relURL)) }}
+          <a class="st-count" href="{{ .u }}" aria-label="{{ .g }} · 共 {{ .n }} 条">
+            <b>{{ .g }}</b>
+            <span class="strokes" aria-hidden="true">{{ range seq .n }}<i style="--n:{{ . }}"></i>{{ end }}</span>
+          </a>
         {{ end }}
-        <a href="/photos/" title="{{ .title }} ({{ .date }})" class="home-photo-item">
-            <img src="{{ $thumbSrc }}" alt="{{ .title }}" loading="lazy">
-        </a>
-    {{ end }}
-</div>
+      </div>
 
+      <div class="st-readout" id="stReadout" aria-live="polite" aria-hidden="true">
+        <span class="ro-k" id="stRoK">文 · WRITING</span>
+        <strong class="ro-t" id="stRoT">{{ $latestPost.Title }}</strong>
+        <span class="ro-m" id="stRoM">{{ $latestPost.Date.Format "2006.01.02" }} · 最近写下</span>
+      </div>
+    </div>
+
+    {{/* 往下看。一支画出来的箭头，不写字 */}}
+    <a class="st-down reveal" href="#garden" aria-label="往下看">
+      <svg viewBox="0 0 24 42" aria-hidden="true">
+        <path d="M12 3 C11 15, 13 25, 12 35"/>
+        <path d="M5 27 C8 31, 11 35, 12 38 C13 35, 16 31, 19 27"/>
+      </svg>
+    </a>
+  </div>
+</section>
+
+{{/* ═══ 近作 ═══════════════════════════════════════════════
+     排法照搬现在的落地页：六张一样大的卡片，两列，每张都是
+
+         左上一行题签和计数 —— 右边压着一件属于这个栏目的东西
+         —— 左下角是内容自己的那几行字（小题 / 正题 / 一句 / 去处）
+
+     那一套之所以立得住，是因为字和物各占一边：字永远在左下角同一个
+     位置，所以六张卡读起来是同一个节奏；物永远在右上角，所以六张卡
+     看起来是六件不同的东西。上一版把物摆到中间、字挤到边上，两边都
+     没占稳，才会显得散。
+
+     换掉的只有材质：没有玻璃、没有圆角、没有投影、没有渐变 —— 卡片
+     是纸上一个方框，物是白描，和上面那张桌子同一支笔。
+
+       文 —— 一页正在写的稿纸，页边线是花青，末了一个还在闪的光标
+       影 —— 相片别在台纸上，四只相角；拿起来时相角留在原地（/album/）
+       诗 —— 一张笺，文武边加罗纹，词竖排写在上面，角上一枚「读」
+       音 —— 一整张唱片，唱片心就是这张专辑的封面，一直在转（/vinyl/）
+       讲 —— 三页讲稿叠着，指上去散开
+       我 —— 一张藏书票：双边框、一句引文、一枚印 */}}
+<section class="st-garden" id="garden">
+  <div class="rule reveal">
+    <h2>近作</h2><span class="bar"></span>
+  </div>
+
+  <div class="st-bento">
+
+    {{/* 文 —— 一页正在写的稿纸 */}}
+    <a class="stc c-wen reveal" data-tilt href="{{ "/posts/" | relURL }}">
+      <div class="stc-head"><span>文 · WRITING</span><i>{{ printf "%02d" (len $posts) }}</i></div>
+      {{/* 划是写上去的字，格是印好的线 —— 两者错开三个像素，字才像是
+           坐在格线上，而不是压着格线 */}}
+      <div class="sheet" aria-hidden="true">
+        <i class="ti"></i><i></i><i></i><i></i>
+      </div>
+      <div class="stc-copy">
+        <small>最近写下</small>
+        <h3>{{ $latestPost.Title }}</h3>
+        <p>{{ $latestPost.Params.summary | default ($latestPost.Summary | plainify | truncate 46) }}</p>
+        <span class="stc-meta">{{ $latestPost.Date.Format "2006.01.02" }} · 继续阅读 ↗</span>
+      </div>
+    </a>
+
+    {{/* 影 —— 别在台纸上的相片。相角是台纸的东西，不是相片的东西，
+         所以相片被拿起来的时候四个角留在原地。角用实心的纸色三角
+         （border 画的）：压在照片上的一根发丝线在深色画面里看不见。 */}}
+    <a class="stc c-ying reveal" data-tilt href="{{ "/photos/" | relURL }}">
+      <div class="stc-head"><span>影 · PHOTOS</span><i>{{ printf "%02d" (len $photos) }}</i></div>
+      <div class="mount">
+        {{- $res := resources.Get (strings.TrimPrefix "/" $latestPhoto.image) -}}
+        {{ if and $res (eq $res.ResourceType "image") }}
+          {{ $img := $res.Resize "760x webp q82" }}
+          <img src="{{ $img.RelPermalink }}" width="{{ $img.Width }}" height="{{ $img.Height }}" alt="{{ $latestPhoto.title }}" loading="lazy">
+        {{ else }}
+          <img src="{{ $latestPhoto.image | relURL }}" alt="{{ $latestPhoto.title }}" loading="lazy">
+        {{ end }}
+        <i class="cn a" aria-hidden="true"></i><i class="cn b" aria-hidden="true"></i>
+        <i class="cn c" aria-hidden="true"></i><i class="cn d" aria-hidden="true"></i>
+      </div>
+      <div class="stc-copy">
+        <small>{{ $latestPhoto.date }}</small>
+        <h3>{{ $latestPhoto.caption | default $latestPhoto.title }}</h3>
+        <span class="stc-meta">{{ $latestPhoto.title }} · 进入取景框 ↗</span>
+      </div>
+    </a>
+
+    {{/* 诗 —— 一张笺 */}}
+    <a class="stc c-shi reveal" data-tilt href="{{ "/poems/" | relURL }}">
+      <div class="stc-head"><span>诗 · POEMS</span><i>{{ printf "%02d" (len $poems) }}</i></div>
+      <blockquote class="jian"><span>{{ $latestPoem.excerpt }}</span><i class="yin" aria-hidden="true">读</i></blockquote>
+      <div class="stc-copy">
+        <small>最近读到</small>
+        <h3>{{ $latestPoem.title }}</h3>
+        <p>{{ $latestPoem.author }}{{ with $latestPoem.dynasty }} · {{ . }}{{ end }}</p>
+      </div>
+    </a>
+
+    {{/* 音 —— 一整张唱片，唱片心就是这张专辑的封面。
+         上一版是封套压着唱片，露在外面的只有右半边那几道弧 —— 三道
+         同心弧不像唱片，像信号格。整张摆出来，封面当片心，反而两样
+         东西都在：是唱片，也是这张专辑。 */}}
+    <a class="stc c-yin reveal" data-tilt href="{{ "/music/" | relURL }}">
+      <div class="stc-head"><span>音 · MUSIC</span><i>{{ printf "%02d" (len $tracks) }}</i></div>
+      {{- $cid := "" -}}
+      {{- with $latestTrack.spotify -}}
+        {{- with findRE `track/([A-Za-z0-9]+)` . 1 -}}{{- $cid = replace (index . 0) "track/" "" -}}{{- end -}}
+      {{- end -}}
+      <div class="disc" aria-hidden="true">
+        <svg viewBox="0 0 104 104">
+          <circle cx="52" cy="52" r="51"/>
+          <circle class="f" cx="52" cy="52" r="46"/>
+          <circle class="f" cx="52" cy="52" r="41"/>
+          <circle class="f" cx="52" cy="52" r="36"/>
+          <circle cx="52" cy="52" r="28"/>
+        </svg>
+        <span class="label">
+          {{ with resources.Get (printf "images/covers/%s.jpg" $cid) }}
+            {{ $c := .Resize "160x webp q82" }}
+            <img src="{{ $c.RelPermalink }}" width="{{ $c.Width }}" height="{{ $c.Height }}" alt="" loading="lazy">
+          {{ end }}
+        </span>
+        <i class="pin"></i>
+      </div>
+      <div class="stc-copy">
+        <small>最近在听</small>
+        <h3>{{ $latestTrack.title }}</h3>
+        <p>{{ $latestTrack.artist }}</p>
+      </div>
+      <div class="eq" aria-hidden="true">{{ range seq 18 }}<i style="--n:{{ . }}"></i>{{ end }}</div>
+    </a>
+
+    {{/* 讲 —— 三页叠着，指上去散开 */}}
+    <a class="stc c-jiang reveal" data-tilt href="{{ "/slides/" | relURL }}">
+      <div class="stc-head"><span>讲 · SLIDES</span><i>↗</i></div>
+      <svg class="deck" viewBox="0 0 170 118" aria-hidden="true">
+        <path class="sh s3" d="M16 32 H118 V104 H16 Z"/>
+        <path class="sh s2" d="M29 22 H131 V94 H29 Z"/>
+        <path class="sh s1" d="M42 12 H144 V84 H42 Z"/>
+        <path class="ln" d="M56 30 H100 M56 42 H128 M56 52 H110 M56 62 H132"/>
+      </svg>
+      <div class="stc-copy">
+        <small>想法的视觉切片</small>
+        <h3>讲稿、演示<br>与分享</h3>
+        <span class="stc-meta">打开讲稿室 ↗</span>
+      </div>
+    </a>
+
+    {{/* 我 —— 一张藏书票。旧首页这一格是整张深蓝，六张卡里唯一的重色；
+         这里改成一层极淡的花青，同样只此一格，但纸还是纸。 */}}
+    <a class="stc c-about reveal" data-tilt href="{{ "/about/" | relURL }}">
+      <div class="stc-head"><span>我 · ABOUT</span><i>∞</i></div>
+      <p class="saying">“What I cannot create,<br>I do not understand.”</p>
+      <div class="stc-foot"><span>Keep exploring.</span><i class="seal" aria-hidden="true">印</i></div>
+    </a>
+  </div>
+</section>
+
+{{/* 行迹 —— 结构和 ID 与首页一致，app.js 的 rings() 认这几个 id 就够了；
+     这里只把它重画成发丝线。 */}}
+<section class="rings st-rings">
+  <div class="rule reveal">
+    <h2>行迹</h2><span class="bar"></span>
+    <span class="rule-note" id="ringsNote"></span>
+  </div>
+  <div class="rings-field reveal" id="rings">
+    <div class="rings-tip" id="tip"></div>
+  </div>
+  <div class="rings-legend reveal" id="legend">
+    <span data-kind="wen"><i></i> 文 WRITING</span>
+    <span data-kind="shi"><i class="shi"></i> 诗 POEMS</span>
+    <span data-kind="yin"><i class="yin"></i> 音 MUSIC</span>
+    <span data-kind="ying"><i class="ying"></i> 影 PHOTOS</span>
+  </div>
+</section>
+
+{{ $js := resources.Get "js/home.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
 {{ end }}

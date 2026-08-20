@@ -1,65 +1,13 @@
 {{ define "main" }}
-<style>
-.notfound-terminal {
-    margin: 3rem 0;
-    border: 1px solid var(--secondary-color);
-    border-radius: 8px;
-    overflow: hidden;
-    background: var(--code-bg-color);
-}
-
-.notfound-terminal-header {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px dashed var(--secondary-color);
-    color: var(--primary-color);
-    font-weight: bold;
-}
-
-.notfound-terminal-body {
-    padding: 1rem;
-    line-height: 1.7;
-}
-
-.notfound-prompt {
-    color: var(--primary-color);
-    font-weight: bold;
-}
-
-.notfound-error {
-    color: var(--error-color);
-}
-
-.notfound-list {
-    margin: 1rem 0 0;
-    padding: 0;
-    list-style: none;
-}
-
-.notfound-list li {
-    margin: 0.25rem 0;
-}
-
-.notfound-list a:hover {
-    background: transparent !important;
-    color: var(--primary-color) !important;
-}
-</style>
-
-<section class="notfound-terminal" aria-label="404 terminal">
-    <div class="notfound-terminal-header">bdathe@home: ~/404</div>
-    <div class="notfound-terminal-body">
-        <div><span class="notfound-prompt">guest@bdathe.wiki:~$</span> open {{ .RelPermalink }}</div>
-        <div class="notfound-error">command not found: {{ .RelPermalink }}</div>
-        <br>
-        <div><span class="notfound-prompt">guest@bdathe.wiki:~$</span> help</div>
-        <div>Try one of these paths:</div>
-        <ul class="notfound-list">
-            <li><a href="/">open home</a></li>
-            <li><a href="/posts/">open posts</a></li>
-            <li><a href="/slides/">open slides</a></li>
-            <li><a href="/music/">open music</a></li>
-            <li><a href="/photos/">open photos</a></li>
-        </ul>
-    </div>
+<section class="lost">
+  <h1>这一页不在了</h1>
+  <p>可能是搬走了，也可能从来没有过。按 ⌘K 找找看，或者从下面这些地方接着逛。</p>
+  <ul>
+    <li><a href="{{ "/" | relURL }}">主页</a></li>
+    {{ range .Site.Params.nav }}
+      <li><a href="{{ .url | relURL }}">{{ .name }} {{ .latin }}</a></li>
+    {{ end }}
+    <li><a href="{{ "/about/" | relURL }}">关于</a></li>
+  </ul>
 </section>
 {{ end }}

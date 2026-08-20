@@ -1,3 +1,22 @@
+# 音 — 一首一条。
+#
+#   title / artist / album / genre / date   基本信息
+#   summary                                 列表上那一行短句
+#   note                                    点开后展开的长文，支持 Markdown，
+#                                           留空则退回用 summary 顶上
+#   spotify                                 带 /track/<id> 的链接：封面、试听文件名、外链
+#   qqmusic                                 只作为外链
+#
+# 唱机播的是 scripts/fetch-covers.py 拉下来的 iTunes 30 秒试听
+# （assets/audio/previews/<spotify-id>.m4a），不是 Spotify iframe。
+#
+# note 的写法：
+#
+#   note: |
+#     第一段。可以写当时在做什么、为什么记住它。
+#
+#     第二段。**粗体**、*斜体*、[链接](https://…) 都可以用。
+
 - title: "Listening For The Weather"
   date: 2026-05-02
   artist: "Bic Runga"

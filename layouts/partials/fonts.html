@@ -1,0 +1,26 @@
+{{/* 霞鹜文楷. The jsDelivr package is already split by unicode-range, so a
+     visitor only downloads the subsets their page actually uses — that is
+     the whole reason we can afford a CJK webfont here.
+
+     Loaded as rel=preload rather than the media="print" trick: both fetch
+     without blocking render, but print media is fetched at the *lowest*
+     priority, which put the swap well after the page had settled. On a
+     cross-document view transition that meant the text visibly re-set itself
+     a beat after the new page had already faded in. Preload asks for it at
+     stylesheet priority instead, so the swap usually lands before or during
+     the transition rather than after it.
+
+     The shift the swap causes is dealt with in main.css — see the
+     'WenKai Fallback' faces, whose metrics are overridden to match 文楷.
+
+     To self-host later: npm i lxgw-wenkai-screen-webfont, copy the woff2 +
+     style.css into static/fonts/, and point this at it. Running the family
+     through cn-font-split first gives finer subsets still. */}}
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="preload" as="style"
+      href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css"
+      onload="this.rel='stylesheet'">
+<noscript>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css">
+</noscript>

@@ -1,2 +1,7 @@
 public/
 resources/
+__pycache__/
+.hugo_build.lock
+.DS_Store
+.preview-*.html
+

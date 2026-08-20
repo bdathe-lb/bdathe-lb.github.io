@@ -1,0 +1,800 @@
+/* ═══════════════════════════════════════════════════════════
+   案头 —— 首页
+
+   只由 layouts/index.html 加载，叠在 main.css 上面。类名一律 st-
+   （案头）前缀，所以不会和别的页面撞。
+
+   画法：整张图是一幅白描 ——
+
+     · 没有卡片、没有圆角面板、没有投影、没有渐变；
+     · 线条走 feTurbulence 位移（#stInk），每一根都有一点手抖；
+     · fill 只有一个用途 —— 让物件挡住它后面那根桌沿线，所以填的是
+       --bg，不是"颜色"；
+     · 蓝只出现在三处：光线、桌上的光斑、被指着的那一件的题签。
+       别的地方一律是墨和纸。
+
+   颜料是花青（--accent #2f5f6e），但它不在这个文件里 —— 从这一版起
+   花青是全站的 accent，写在 main.css 的四时表和 head_theme.html 里，
+   所以内页点进去不会突然变回石板蓝。纸（--bg/--surface/--line）照旧
+   按分钟数漂移。
+
+   落地时线是一根根画出来的（stroke-dashoffset），顺序：桌沿 → 窗 →
+   物件 → 天 → 光。每一组的延迟写在模板的 --d 上，单位 ms。
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────
+   首屏
+   ───────────────────────────────────────────────────────── */
+
+.st-hero {
+  min-height: min(84svh, 700px);
+  padding: 3.2rem 0 3.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ── 计数 —— 一条内容一划 ──────────────────────────────────
+   原来这里是「01 / 文 WRITING」四组，加一句问候、一句介绍和两个文字
+   按钮。数字要读，Latin 要读，问候也要读；而这一栏其实只需要回答
+   "这里有多少东西"。墨划不用读 —— 五划一组，一眼就是个数。 */
+
+.st-tally {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.st-count { display: flex; align-items: center; gap: 1.15rem; width: fit-content; }
+.st-count b {
+  width: 1.15em;
+  font: 400 1.05rem/1 var(--serif);
+  color: var(--ink);
+  transition: color var(--mid) var(--soft);
+}
+.strokes { display: flex; align-items: flex-end; height: 22px; }
+.strokes i {
+  /* 每一划都略有出入：高矮差一两个像素，角度差两度。整齐的等距竖线是
+     刻度尺，参差的才是手划上去的。 */
+  width: 1.9px;
+  height: calc(19px + mod(var(--n), 4) * 1.5px);
+  margin-right: 6px;
+  background: color-mix(in srgb, var(--ink) 62%, transparent);
+  transform-origin: 50% 100%;
+  rotate: calc((mod(var(--n), 3) - 1) * 2.4deg);
+  transition:
+    background var(--mid) var(--soft),
+    scale var(--slow) var(--spring);
+  transition-delay: calc(var(--n) * 22ms);
+}
+/* 五划一组 */
+.strokes i:nth-child(5n) { margin-right: 17px; }
+.st-count:hover b, .st-count:focus-visible b { color: var(--accent); }
+.st-count:hover .strokes i,
+.st-count:focus-visible .strokes i {
+  background: var(--accent);
+  scale: 1 1.14;
+}
+
+/* ── 往下看 ── */
+.st-down {
+  display: block;
+  width: 24px;
+  margin: 1.7rem auto 0;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0.62;
+  transition: opacity var(--mid) var(--soft);
+  animation: stBob 3.4s ease-in-out infinite;
+}
+.st-down:hover { opacity: 1; }
+.st-down svg { display: block; width: 100%; height: auto; }
+@keyframes stBob { 50% { translate: 0 6px; } }
+
+/* ─────────────────────────────────────────────────────────
+   图 —— 没有外框，直接落在纸上
+   ───────────────────────────────────────────────────────── */
+
+.st-world { position: relative; }
+
+/* 桌沿现在从 -300 画到 900（画外），overflow 把它裁在这个盒子的两边 ——
+   于是桌子横跨整幅纸，而不是停在图的边上。 */
+.st-plate { position: relative; overflow: hidden; }
+
+.st-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 满宽的话 600×400 会有 700 多像素高，一屏装不下。封住高度，
+     preserveAspectRatio="xMidYMax meet" 会把画面缩到这个高度、横向居中，
+     两边空出来的地方正好留给拉出画外的桌沿。 */
+  max-height: min(62svh, 600px);
+  overflow: visible;
+  /* 继承下去，省掉给每一条路径写 fill:none */
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* 指针带着整张纸挪一点点。放在 <svg> 这个替换元素上，是一次合成层
+     位移，不会让里面那个滤镜重算 —— 换成给里面的组加 transform 就会。 */
+  transform: translate3d(calc(var(--mx, 0) * 5px), calc(var(--my, 0) * 4px), 0);
+  transition: transform 620ms var(--soft);
+}
+.st-plate.live .st-svg { transition: transform 140ms ease-out; }
+.st-alive {
+  transform: translate(calc(var(--mx, 0) * 4px), calc(var(--my, 0) * 3px));
+  transition: transform 620ms var(--soft);
+}
+
+/* ── 线 ── */
+.st-ink path { stroke: color-mix(in srgb, var(--ink) 76%, transparent); stroke-width: 1.5; }
+.st-faint path { stroke: color-mix(in srgb, var(--muted) 60%, transparent); stroke-width: 1.05; }
+.st-fill { fill: var(--bg); }
+
+/* ── 一根根画出来 ── */
+@keyframes stDraw { to { stroke-dashoffset: 0; } }
+@keyframes stFill { to { fill-opacity: 1; } }
+
+.js .st-draw path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: stDraw 900ms var(--soft) forwards;
+  animation-delay: calc(var(--d, 0) * 1ms);
+}
+.js .st-fill { fill-opacity: 0; }
+.js .st-draw path.st-fill {
+  animation: stDraw 900ms var(--soft) forwards, stFill 520ms var(--soft) forwards;
+  animation-delay: calc(var(--d, 0) * 1ms), calc((var(--d, 0) + 520) * 1ms);
+}
+
+/* ── 窗外 ── */
+.st-orb {
+  transform: translate(var(--ox, 346px), var(--oy, 96px));
+  transition: transform 2.4s var(--soft);
+}
+.st-orb path { stroke: color-mix(in srgb, var(--muted) 72%, transparent); stroke-width: 1.3; }
+.orb-moon { display: none; }
+.st-plate[data-night='on'] .orb-sun { display: none; }
+.st-plate[data-night='on'] .orb-moon { display: block; }
+
+.st-stars {
+  opacity: 0;
+  transition: opacity 1.4s var(--soft);
+}
+.st-stars path { stroke: color-mix(in srgb, var(--muted) 62%, transparent); stroke-width: 1.05; }
+.st-plate[data-night='on'] .st-stars { opacity: 0.95; }
+
+/* ── 光 ── */
+.st-rays {
+  transform-origin: 331px 231px;
+  transform: skewX(var(--ray, 0deg));
+  opacity: var(--beam, 0.7);
+  transition: transform 2.4s var(--soft), opacity 1.8s var(--soft);
+}
+.st-rays path {
+  stroke: color-mix(in srgb, var(--accent) 42%, transparent);
+  stroke-width: 1.1;
+}
+
+.st-patch {
+  transform-origin: 0 336px;
+  transform: translateX(var(--px, 331px)) skewX(var(--ray, 0deg));
+  opacity: var(--patch-o, 0.4);
+  transition: transform 2.6s var(--soft), opacity 2s var(--soft);
+}
+.st-patch path {
+  stroke: color-mix(in srgb, var(--accent) 34%, transparent);
+  stroke-width: 1.05;
+}
+
+/* 尘 —— 让那两根线读成"光"而不是"两根线"。整组跟着光一起斜，
+   所以尘永远落在那道光里，而不是落在它旁边。 */
+.st-motes {
+  transform-origin: 331px 231px;
+  transform: skewX(var(--ray, 0deg));
+  transition: transform 2.4s var(--soft);
+}
+.st-motes circle {
+  fill: color-mix(in srgb, var(--accent) 55%, transparent);
+  opacity: 0;
+  animation: stMote calc(17s + var(--n) * 2.1s) linear infinite;
+  animation-delay: calc(var(--n) * -3.1s);
+}
+@keyframes stMote {
+  0%   { opacity: 0; transform: translate(0, 12px); }
+  16%  { opacity: 0.8; }
+  74%  { opacity: 0.55; }
+  100% { opacity: 0; transform: translate(16px, -46px); }
+}
+
+/* ── 一直在动的两件 ── */
+.st-steam path {
+  stroke: color-mix(in srgb, var(--muted) 42%, transparent);
+  stroke-width: 1.05;
+  opacity: 0;
+  animation: stSteam 4.4s ease-in-out infinite;
+}
+.st-steam path:nth-child(2) { animation-delay: -2.1s; }
+@keyframes stSteam {
+  0%   { opacity: 0; transform: translateY(6px) scaleY(0.7); }
+  35%  { opacity: 0.85; }
+  100% { opacity: 0; transform: translateY(-9px) scaleY(1.15); }
+}
+
+.st-leaves path {
+  stroke: color-mix(in srgb, var(--ink) 62%, transparent);
+  stroke-width: 1.3;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: stSway 7.5s ease-in-out infinite;
+}
+.st-leaves .b { animation-delay: -2.4s; }
+.st-leaves .c { animation-delay: -4.8s; }
+@keyframes stSway { 50% { rotate: 2.4deg; } }
+
+/* ── 物件 ── */
+.stobj { cursor: pointer; }
+.stobj:focus { outline: none; }
+.st-lift { transition: transform 520ms var(--spring); }
+.stobj:hover .st-lift,
+.stobj:focus-visible .st-lift,
+.stobj.on .st-lift { transform: translateY(-9px); }
+
+.stobj:hover .st-ink path,
+.stobj:focus-visible .st-ink path,
+.stobj.on .st-ink path { stroke: var(--ink); stroke-width: 1.75; }
+.stobj:hover .st-faint path,
+.stobj:focus-visible .st-faint path,
+.stobj.on .st-faint path { stroke: color-mix(in srgb, var(--accent) 78%, transparent); }
+.st-ink path, .st-faint path { transition: stroke 320ms var(--soft), stroke-width 320ms var(--soft); }
+
+/* 脚下的排线。方向和长短跟着日头走 —— home.js 把 --sh 拧成 ±1.x */
+.st-shade {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  transform: scaleX(var(--sh, 1));
+  opacity: var(--shade-o, 0.5);
+  transition: transform 2.4s var(--soft), opacity 1.8s var(--soft);
+}
+.st-shade path { stroke-width: 1.15; }
+
+.st-disc { transform-box: fill-box; transform-origin: center; }
+.stobj:hover .st-disc,
+.stobj.on .st-disc { animation: stSpin 3.4s linear infinite; }
+@keyframes stSpin { to { rotate: 360deg; } }
+
+/* 题签 */
+.st-tag {
+  fill: var(--accent-deep);
+  font-family: var(--serif);
+  font-size: 15px;
+  text-anchor: middle;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 300ms var(--soft), transform 300ms var(--soft);
+}
+.stobj:hover .st-tag,
+.stobj:focus-visible .st-tag,
+.stobj.on .st-tag { opacity: 1; transform: translateY(0); }
+.stobj:focus-visible .st-lift { outline: 1px dashed var(--accent); outline-offset: 6px; }
+
+/* ── 图底下那一行 ──────────────────────────────────────
+   一条发丝线，两头各站一样：左边这座园子有多少东西，右边被指着的那一件。
+   两边都是小字，所以这一行读起来是图的注脚，不是第二个标题。 */
+.st-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: clamp(1.5rem, 6vw, 5rem);
+  margin-top: 1.3rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+}
+.st-readout {
+  /* 换内容的时候这一栏不能跟着抽动，所以高度写死 */
+  min-height: 74px;
+  width: min(50%, 26rem);
+}
+/* 有 JS 时，没指着任何一件就收起来；高度仍占着，脚不会跳。 */
+.js .st-readout {
+  opacity: 0;
+  transform: translateY(6px);
+  filter: blur(3px);
+  pointer-events: none;
+  transition:
+    opacity 380ms var(--soft),
+    transform 380ms var(--soft),
+    filter 380ms var(--soft);
+}
+.js .st-readout.on {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+.ro-k { display: block; color: var(--accent-deep); font: 0.55rem/1 var(--mono); letter-spacing: 0.15em; }
+.ro-t {
+  display: -webkit-box;
+  margin-top: 0.5rem;
+  font: 400 1.02rem/1.5 var(--serif);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-wrap: balance;
+}
+.ro-m { display: block; margin-top: 0.3rem; color: var(--muted); font: 0.58rem/1 var(--mono); }
+.st-readout.swap .ro-k,
+.st-readout.swap .ro-t,
+.st-readout.swap .ro-m { animation: stSwap 420ms var(--soft) both; }
+.st-readout.swap .ro-t { animation-delay: 50ms; }
+.st-readout.swap .ro-m { animation-delay: 100ms; }
+@keyframes stSwap { from { opacity: 0; translate: 0 8px; filter: blur(3px); } }
+
+/* 离开首屏时整张图退回去一点，交接才有方向 */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .st-world {
+      animation: stRecede linear both;
+      animation-timeline: view();
+      animation-range: exit -10% exit 90%;
+      transform-origin: 50% 30%;
+    }
+  }
+}
+@keyframes stRecede {
+  from { transform: none; opacity: 1; }
+  to   { transform: translateY(-22px) scale(0.955); opacity: 0.5; }
+}
+
+/* ─────────────────────────────────────────────────────────
+   近作 —— 六张卡片
+
+   排法照搬现在的落地页那一套 bento：两列、六张一样大的卡，每张卡上
+   只有两处东西 ——
+
+     · 左上角一行题签和计数，左下角内容自己的三四行字；
+     · 右上角压着一件属于这个栏目的物。
+
+   字总在同一个角落，所以六张卡是同一个节奏；物各不相同，所以六张卡
+   是六件不同的东西。这两条一起才是"卡片"，少一条就散。
+
+   换掉的只有材质：卡片是纸上一个方框（一根发丝边线，没有圆角、没有
+   投影、没有渐变），物是白描，和上面那张桌子同一支笔。
+   ───────────────────────────────────────────────────────── */
+
+.st-garden { padding: 1rem 0 4.5rem; }
+
+.st-bento {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 232px;
+  gap: 14px;
+}
+
+.stc {
+  position: relative;
+  overflow: hidden;
+  padding: 17px 20px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  /* 整张卡跟着指针偏一点 —— app.js 的 [data-tilt] 往 style 上写 transform，
+     所以这里只留 transition，别的地方不要再动 .stc 的 transform */
+  transition:
+    transform 0.24s ease-out,
+    border-color var(--slow) var(--soft),
+    background var(--slow) var(--soft);
+}
+.stc:hover {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  background: var(--surface);
+}
+
+/* 题签 —— 栏目名在左，这一栏有多少条在右 */
+.stc-head {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  color: var(--accent-deep);
+  font: 0.56rem/1 var(--mono);
+  letter-spacing: 0.13em;
+}
+.stc-head i { font-style: normal; color: var(--muted); }
+
+/* 字。六张卡都钉在左下角同一个位置 */
+.stc-copy {
+  position: absolute;
+  z-index: 3;
+  left: 20px;
+  right: 20px;
+  bottom: 16px;
+}
+.stc-copy small {
+  color: var(--muted);
+  font: 0.56rem/1 var(--mono);
+  letter-spacing: 0.09em;
+}
+.stc-copy h3 {
+  margin: 9px 0 5px;
+  font: 400 1.5rem/1.24 var(--serif);
+  text-wrap: balance;
+}
+.stc-copy p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+.stc-meta {
+  color: var(--accent-deep);
+  font: 0.56rem/1 var(--mono);
+  letter-spacing: 0.04em;
+}
+
+/* ── 文 —— 一页正在写的稿纸 ──────────────────────────────
+   格线是印好的（背景里那一道 repeating 硬色标），墨划是写上去的。
+   两者错开三个像素：字坐在线上，不压着线。 */
+.c-wen .stc-copy { right: 150px; }
+.c-wen .stc-copy h3 { font-size: clamp(1.6rem, 3vw, 1.95rem); }
+
+.c-wen .sheet {
+  position: absolute;
+  z-index: 1;
+  right: 20px;
+  top: 46px;
+  width: 112px;
+  height: 140px;
+  padding: 13px 13px 13px 22px;
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, var(--line));
+  background-color: var(--surface);
+  /* 印好的格线。每 18px 一道，和下面墨划的步长同一个数 */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 17px,
+    color-mix(in srgb, var(--accent) 16%, transparent) 17px 18px);
+  background-origin: content-box;
+  background-clip: content-box;
+  rotate: 2.4deg;
+  transition: rotate var(--slow) var(--soft), translate var(--slow) var(--soft);
+}
+.c-wen:hover .sheet { rotate: -1deg; translate: 0 -4px; }
+/* 页边线 —— 真稿纸上那一条印在左边的竖线 */
+.c-wen .sheet::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 11px;
+  bottom: 11px;
+  width: 1px;
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
+}
+.c-wen .sheet i {
+  display: block;
+  height: 2px;
+  /* 一划 2px + 16px 的间隔 = 18px，和格线同一个步长；再往下压 14px，
+     每一划就正好落在它那道格线的上沿 —— 差这几个像素，划和线会叠成
+     一条粗的双线，一页写过的稿纸立刻变成一张表格 */
+  margin-bottom: 16px;
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+.c-wen .sheet i:first-of-type { margin-top: 14px; }
+.c-wen .sheet i.ti {
+  height: 3px;
+  width: 62%;
+  background: color-mix(in srgb, var(--accent) 62%, transparent);
+}
+.c-wen .sheet i:nth-of-type(3) { width: 86%; }
+.c-wen .sheet i:nth-of-type(4) { width: 47%; }
+/* 还在写 —— 光标挂在最后一划的末尾上，不是钉在稿纸的某个坐标上：
+   划的宽度、稿纸的内边距、窄屏下整张纸的尺寸都会变，写死的那对数字
+   一改就飘到纸中间去 */
+.c-wen .sheet i:last-of-type { position: relative; }
+.c-wen .sheet i:last-of-type::after {
+  content: '';
+  position: absolute;
+  left: calc(100% + 3px);
+  bottom: 0;
+  width: 2px;
+  height: 13px;
+  background: var(--accent);
+  animation: stCaret 1.15s steps(1) infinite;
+}
+@keyframes stCaret { 50% { opacity: 0; } }
+
+/* ── 影 —— 别在台纸上的相片 ──────────────────────────────
+   相角是台纸的东西，不是相片的东西：相片抬起来的时候四个角留在原地。
+   角是实心的纸色三角（border 画的）—— 压在照片上的一根发丝线在深色
+   画面里根本看不见，试过。 */
+.c-ying .stc-copy { right: auto; width: 45%; }
+.c-ying .stc-copy h3 { font-size: 1.36rem; }
+
+.c-ying .mount {
+  position: absolute;
+  z-index: 2;
+  right: 20px;
+  top: 44px;
+  width: 46%;
+  height: 150px;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, var(--ink) 16%, var(--line));
+  background: var(--surface);
+  rotate: 2deg;
+  transition: rotate var(--slow) var(--soft), translate var(--slow) var(--soft);
+}
+.c-ying:hover .mount { rotate: 0deg; translate: 0 -3px; }
+.c-ying img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.88) brightness(var(--dim));
+  transition: translate 620ms var(--soft), filter var(--slow) var(--soft);
+}
+.c-ying:hover img { translate: 0 -5px; filter: none; }
+.cn {
+  position: absolute;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  --corner: color-mix(in srgb, var(--line) 46%, var(--ink));
+}
+.cn.a { left: 7px;  top: 7px;    border-top: 22px solid var(--corner);    border-right: 22px solid transparent; }
+.cn.b { right: 7px; top: 7px;    border-top: 22px solid var(--corner);    border-left: 22px solid transparent; }
+.cn.c { right: 7px; bottom: 7px; border-bottom: 22px solid var(--corner); border-left: 22px solid transparent; }
+.cn.d { left: 7px;  bottom: 7px; border-bottom: 22px solid var(--corner); border-right: 22px solid transparent; }
+
+/* ── 诗 —— 一张笺 ────────────────────────────────────────
+   文武边：外面一根粗些的，里面一根细的（两道 inset 阴影画出来）。
+   罗纹顺着字走，压到 --ink 6%，再深就成了条纹布。 */
+.c-shi .stc-copy { right: auto; width: 44%; }
+.c-shi .stc-copy h3 { font-size: 1.18rem; line-height: 1.4; }
+.c-shi .stc-copy p { margin: 0; font-size: 0.72rem; }
+
+.c-shi .jian {
+  position: absolute;
+  z-index: 2;
+  right: 20px;
+  top: 44px;
+  width: 41%;
+  height: 152px;
+  margin: 0;
+  padding: 13px 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 55%, var(--ink));
+  background-color: var(--surface);
+  background-image: repeating-linear-gradient(to right,
+    color-mix(in srgb, var(--ink) 5%, transparent) 0 1px, transparent 1px 8px);
+  box-shadow:
+    inset 0 0 0 4px var(--surface),
+    inset 0 0 0 5px color-mix(in srgb, var(--line) 85%, transparent);
+  rotate: -1.4deg;
+  transition: rotate var(--slow) var(--soft), translate var(--slow) var(--soft);
+}
+.c-shi:hover .jian { rotate: 0.6deg; translate: 0 -4px; }
+.c-shi .jian span {
+  display: flex;
+  /* 竖排是从右往左写的，所以一句写不满的时候，空出来的是左边那一半。
+     居中放，两边的余白才一样宽 —— 靠右贴着写，左边会空出半张笺来。 */
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  /* 款印在左下角，写到那儿的那一列要让开 */
+  padding-left: 26px;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font: 400 0.95rem/1.78 var(--serif);
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--ink) 84%, transparent);
+}
+.c-shi .yin {
+  position: absolute;
+  left: 11px;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: color-mix(in srgb, var(--accent) 78%, transparent);
+  font: 400 0.76rem/1 var(--serif);
+  font-style: normal;
+  rotate: -5deg;
+}
+
+/* ── 音 —— 一整张唱片，唱片心是封面 ──────────────────────
+   上一版是封套压着唱片，露在外面只有右半边三道同心弧 —— 那不像唱片，
+   像信号格。整张摆出来，把封面嵌进片心：是唱片，也是这张专辑。 */
+.c-yin .stc-copy { bottom: 38px; max-width: 58%; }
+.c-yin .stc-copy h3 { font-size: 1.3rem; }
+.c-yin .stc-copy p { margin: 0; font-size: 0.74rem; }
+
+.c-yin .disc {
+  position: absolute;
+  z-index: 1;
+  right: 22px;
+  top: 48px;
+  width: 108px;
+  height: 108px;
+  animation: stSpin 22s linear infinite;
+}
+.c-yin .disc svg { display: block; width: 100%; height: 100%; fill: none; }
+.c-yin .disc circle { stroke: color-mix(in srgb, var(--ink) 42%, transparent); stroke-width: 1.3; }
+.c-yin .disc circle.f { stroke: color-mix(in srgb, var(--muted) 42%, transparent); stroke-width: 1; }
+/* 片心 —— 封面剪成圆的，跟着唱片一起转 */
+.c-yin .label {
+  position: absolute;
+  /* 和 SVG 里 r=28 那一圈严丝合缝：差几个像素，封面就会盖住那条线，
+     看上去是"照片压在唱片上"，而不是"封面就是片心" */
+  inset: 23%;
+  display: block;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.c-yin .label img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.82) brightness(var(--dim));
+  transition: filter var(--slow) var(--soft);
+}
+.c-yin:hover .label img { filter: none; }
+.c-yin .pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 42%, transparent);
+}
+@keyframes stSpin { to { rotate: 360deg; } }
+
+/* 表针一样的电平条：一直在跳，所以这张卡是"正在听"，不是"听过" */
+.c-yin .eq {
+  position: absolute;
+  z-index: 3;
+  left: 20px;
+  right: auto;
+  bottom: 15px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 12px;
+  opacity: 0.5;
+}
+.c-yin .eq i {
+  /* 细的才是电平条。铺满整行的宽条子读成一行虚线，不读成表 */
+  flex: none;
+  width: 2px;
+  height: calc(2px + mod(var(--n), 6) * 1px);
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+  animation: stEq calc(1s + mod(var(--n), 5) * 0.13s) ease-in-out infinite alternate;
+}
+@keyframes stEq { to { height: 11px; } }
+
+/* ── 讲 —— 三页叠着，指上去散开 ── */
+.c-jiang .stc-copy { right: 160px; }
+.c-jiang .stc-copy h3 { font-size: 1.4rem; }
+
+.c-jiang .deck {
+  position: absolute;
+  z-index: 1;
+  right: 12px;
+  top: 48px;
+  width: 168px;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.c-jiang .sh { fill: var(--surface); stroke: color-mix(in srgb, var(--ink) 40%, transparent); stroke-width: 1.3; }
+.c-jiang .ln { stroke: color-mix(in srgb, var(--muted) 48%, transparent); stroke-width: 1.1; }
+.c-jiang .s3, .c-jiang .s2 {
+  /* fill-box：不写这一条，transform-origin 会落在整个 <svg> 的坐标原点上 */
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: translate 520ms var(--soft), rotate 520ms var(--soft);
+}
+.c-jiang:hover .s3 { translate: -11px 7px; rotate: -3.5deg; }
+.c-jiang:hover .s2 { translate: -5px 3px; rotate: -1.6deg; }
+.c-jiang:hover .sh { stroke: color-mix(in srgb, var(--ink) 62%, transparent); }
+.c-jiang:hover .ln { stroke: color-mix(in srgb, var(--accent) 60%, transparent); }
+
+/* ── 我 —— 一张藏书票 ────────────────────────────────────
+   旧首页这一格是整张深蓝，六张卡里唯一的重色；这里换成一层极淡的
+   花青 —— 同样只此一格，但纸还是纸。 */
+.c-about { background: color-mix(in srgb, var(--accent) 7%, var(--bg)); }
+.c-about:hover { background: color-mix(in srgb, var(--accent) 10%, var(--bg)); }
+/* 双边框，藏书票就是靠这一圈成立的 */
+.c-about::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  pointer-events: none;
+}
+.saying {
+  position: relative;
+  z-index: 2;
+  margin: 34px 0 0;
+  font: 400 1.24rem/1.6 var(--serif);
+  color: color-mix(in srgb, var(--ink) 90%, transparent);
+}
+.stc-foot {
+  position: absolute;
+  z-index: 2;
+  left: 20px;
+  right: 20px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font: 0.56rem/1 var(--mono);
+  letter-spacing: 0.06em;
+}
+.seal {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+  font: 400 0.82rem/1 var(--serif);
+  font-style: normal;
+  rotate: -4deg;
+  opacity: 0.72;
+  transition: opacity var(--mid) var(--soft), rotate var(--mid) var(--spring), scale var(--mid) var(--spring);
+}
+.c-about:hover .seal { opacity: 1; rotate: 3deg; scale: 1.06; }
+
+/* ─────────────────────────────────────────────────────────
+   行迹 —— 结构不动，只把它压回发丝线
+   ───────────────────────────────────────────────────────── */
+.st-rings { padding-bottom: 6rem; }
+
+/* ─────────────────────────────────────────────────────────
+   窄屏
+   ───────────────────────────────────────────────────────── */
+
+@media (max-width: 1040px) {
+  .st-hero { min-height: 0; }
+}
+
+@media (max-width: 720px) {
+  .st-hero { padding-top: 2.4rem; }
+  /* 一行装不下计数和此刻了：叠起来，计数在上 */
+  .st-foot { flex-direction: column; gap: 1.4rem; }
+  .st-readout { width: 100%; min-height: 0; }
+
+  /* 两列还留着，但物件要让一让 —— 卡片一窄，物和字就开始抢地方 */
+  .st-bento { grid-auto-rows: 216px; }
+  .c-wen .sheet { right: 16px; top: 44px; width: 96px; height: 122px; padding: 11px 11px 11px 19px; }
+  .c-wen .stc-copy { right: 124px; }
+  .c-ying .mount, .c-shi .jian { right: 16px; height: 138px; }
+  .c-yin .disc { right: 18px; top: 46px; width: 92px; height: 92px; }
+  .c-jiang .deck { right: 10px; width: 132px; }
+  .c-jiang .stc-copy { right: 134px; }
+  .saying { margin-top: 26px; font-size: 1.1rem; }
+}
+
+@media (max-width: 560px) {
+  .st-bento { grid-template-columns: minmax(0, 1fr); grid-auto-rows: 212px; }
+  .c-ying .stc-copy, .c-shi .stc-copy { width: 42%; }
+  .c-ying .stc-copy h3 { font-size: 1.2rem; }
+  .c-shi .stc-copy h3 { font-size: 1.05rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .st-draw path,
+  .js .st-draw path.st-fill { animation: none; stroke-dashoffset: 0; }
+  .js .st-fill { fill-opacity: 1; }
+  .st-motes circle, .st-steam path, .st-leaves path { animation: none; }
+  .st-down, .c-yin .disc, .c-yin .eq i { animation: none; }
+  .c-wen .sheet i:last-of-type::after { animation: none; }
+  .st-steam path { opacity: 0.5; }
+  .st-svg, .st-alive { transform: none; }
+  .js .st-readout { transition: none; filter: none; transform: none; }
+}

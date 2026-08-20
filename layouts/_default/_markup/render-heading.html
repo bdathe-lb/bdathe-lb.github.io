@@ -1,0 +1,5 @@
+{{- /* The anchor is a sibling of the text rather than a wrapper, so it can sit
+       out in the gutter on hover without joining the heading's own click
+       target or ending up in the table of contents' link text. app.js turns
+       it into a copy-link; without JS it is still an ordinary jump link. */ -}}
+<h{{ .Level }} id="{{ .Anchor | safeURL }}">{{ .Text | safeHTML }}<a class="h-anchor" href="#{{ .Anchor | safeURL }}" aria-label="复制到此节的链接" tabindex="-1">#</a></h{{ .Level }}>

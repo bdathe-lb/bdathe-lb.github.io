@@ -1,0 +1,85 @@
+{{/* Runs before first paint, so there is never a flash of the wrong hour.
+
+     Every period is LIGHT. The old table inverted at 暮 into dark ink on dark
+     paper, which forced 昼→暮 and 夜→晨 to be hard switches — you cannot
+     cross-fade a light theme into a dark one without passing through a moment
+     where nothing is readable. With all four anchors light, the whole day is
+     one continuous drift and there is no boundary to snap at.
+
+     The colour is deliberately a whisper: the paper moves about two percent
+     across the day. The hour is meant to be read in the window on the home
+     page, not shouted by the background.
+
+     The same table drives the 随时间 toggle in app.js, via window.__theme. */}}
+<script>
+(function () {
+  var d = document.documentElement;
+  d.classList.add('js');
+
+  var P = {
+    dawn:  { bg: '#fbfcfd', surface: '#f4f6f9', line: '#e4e8ed', ink: '#1b2430', muted: '#5d6875', accent: '#2f5f6e', 'accent-deep': '#26505d', 'accent-soft': '#2f5f6e16' },
+    day:   { bg: '#fbfcfd', surface: '#f5f7f9', line: '#e4e8ed', ink: '#1b2430', muted: '#5d6875', accent: '#2f5f6e', 'accent-deep': '#26505d', 'accent-soft': '#2f5f6e16' },
+    dusk:  { bg: '#fcfbfc', surface: '#f7f5f7', line: '#e9e6ea', ink: '#241f2b', muted: '#655d70', accent: '#35606b', 'accent-deep': '#2b5058', 'accent-soft': '#35606b16' },
+    night: { bg: '#f9fafc', surface: '#f1f3f7', line: '#e1e4ea', ink: '#191f2b', muted: '#58616e', accent: '#2b5a6b', 'accent-deep': '#234b59', 'accent-soft': '#2b5a6b16' }
+  };
+  var KEYS = ['bg', 'surface', 'line', 'ink', 'muted', 'accent', 'accent-deep', 'accent-soft'];
+
+  var chan = function (c) {
+    var s = c.slice(1);
+    if (s.length === 3) s = s.replace(/./g, function (x) { return x + x; });
+    if (s.length === 6) s += 'ff';
+    return [s.slice(0, 2), s.slice(2, 4), s.slice(4, 6), s.slice(6, 8)].map(function (h) {
+      return parseInt(h, 16);
+    });
+  };
+  var pad = function (n) { n = Math.round(n).toString(16); return n.length < 2 ? '0' + n : n; };
+  var mix = function (a, b, t) {
+    var x = chan(a), y = chan(b), out = '#';
+    for (var i = 0; i < 4; i++) out += pad(x[i] + (y[i] - x[i]) * t);
+    return out;
+  };
+
+  function blend(a, b, t) {
+    t = t * t * (3 - 2 * t);            // linger near each named hour, move through the middle
+    var out = { name: t < 0.5 ? a : b, vars: {} };
+    KEYS.forEach(function (k) { out.vars[k] = t ? mix(P[a][k], P[b][k], t) : P[a][k]; });
+    return out;
+  }
+
+  /* 05:00 晨 ── 09:00 昼 ── holds ── 17:00 暮 ── 21:00 夜 ── holds ──
+     Every leg is a blend now, including the two that used to be switches. */
+  function at(mins) {
+    if (mins < 300)                     return blend('night', 'night', 0);
+    if (mins < 540)                     return blend('dawn', 'day', (mins - 300) / 240);
+    if (mins < 1020)                    return blend('day', 'day', 0);
+    if (mins < 1260)                    return blend('dusk', 'night', (mins - 1020) / 240);
+    return blend('night', 'night', 0);
+  }
+
+  function auto() {
+    var n = new Date();
+    var s = at(n.getHours() * 60 + n.getMinutes());
+    d.setAttribute('data-theme', s.name);
+    KEYS.forEach(function (k) { d.style.setProperty('--' + k, s.vars[k]); });
+    return s.name;
+  }
+
+  function off() {
+    // the toggle's off state: 昼 held flat, no drift
+    d.setAttribute('data-theme', 'day');
+    KEYS.forEach(function (k) { d.style.removeProperty('--' + k); });
+  }
+
+  var mode;
+  try {
+    // 'theme' pinned one of 晨/昼/暮/夜 under the old dial. Two of those were
+    // dark and none of them exist as a choice now, so drop the key rather
+    // than leave a preference behind that nothing can honour.
+    localStorage.removeItem('theme');
+    mode = localStorage.getItem('theme-auto');
+  } catch (e) {}
+  if (mode === 'off') { off(); } else { mode = 'auto'; auto(); }
+
+  window.__theme = { auto: auto, off: off, mode: mode, periods: P };
+})();
+</script>

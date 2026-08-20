@@ -1,0 +1,636 @@
+/* ═══════════════════════════════════════════════════════════
+   诗 · 笺
+   Loaded only by layouts/verse/list.html, on top of main.css.
+
+   Every 笺 has two faces and one element. Lying on the desk it shows its
+   题签, its 名句 and who wrote it; picked up it shows the 题头, the two
+   阙 and the 款印. Nothing is duplicated, so opening one is that element
+   changing size and place — which is what verse.js hands to a
+   same-document view transition.
+
+   Nothing is open until you open it. The page IS the heap; reading
+   happens in a frame laid over it. The heap is placed by the template
+   and placed absolutely, so taking a sheet out of it never makes the
+   other four slide — the one thing paper does not do.
+
+   The 词 is set 横排, one 句 per line, centred. That is why there are no
+   乌丝栏: 界栏 divide COLUMNS, and there are none. What still makes the
+   sheet a sheet is everything around the writing — the 文武边, the 题签
+   on the edge, the 暗纹 printed in the 版心, the 款印 in the corner, and
+   the 罗纹 in the paper, running with the lines instead of across them.
+
+   Colour stays on the site tokens; the only thing each 笺 owns is
+   --tint / --edge, both inside --surface ±2%.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* one 句 is at most 7 characters, so the writing wants a narrow sheet —
+     any wider and the block sits in a lake of margin */
+  --pitch: 50px;
+  --sheet: 468px;
+}
+
+.jian-desk { margin: 0 0 4rem; padding-top: 2.6rem; }
+.jian-desk .rule { margin-bottom: 1.6rem; }
+
+.jian-heap { position: relative; height: var(--heap-h, 430px); }
+
+/* ─────────────────────────────────────────────────────────
+   笺
+   ───────────────────────────────────────────────────────── */
+
+.jian { position: relative; }
+
+.jian-paper {
+  position: relative;
+  width: 100%;
+  /* no fixed height: a 笺 is as tall as the 词 written on it, and the open
+     morphs between sizes rather than padding every sheet to the longest */
+  min-height: 600px;
+  background: var(--tint, #f7f8fa);
+  /* 罗纹 on the line pitch, so every 句 sits in its own laid band instead of
+     beating against one */
+  background-image: repeating-linear-gradient(0deg, transparent 0 calc(var(--pitch) - 1px), rgba(27, 36, 48, 0.028) calc(var(--pitch) - 1px) var(--pitch));
+  border: 1px solid var(--edge, #e2e6eb);
+  box-shadow:
+    0 30px 52px -30px rgba(27, 36, 48, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: box-shadow var(--slow) var(--soft);
+}
+
+/* 题签 — pasted on the left edge, over the 版框, one shade whiter than the
+   笺 it sits on. Stays vertical whichever way the writing runs: a label on
+   a spine always does. It is also what makes a sheet in the heap something
+   you can name before you pick it up. */
+.jian-tag {
+  position: absolute;
+  left: -7px;
+  top: 58px;
+  z-index: 2;
+  writing-mode: vertical-rl;
+  padding: 18px 7px;
+  font-family: var(--serif);
+  font-size: 0.94rem;
+  letter-spacing: 0.16em;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--edge, #e2e6eb);
+  box-shadow: 2px 3px 8px -4px rgba(27, 36, 48, 0.34);
+}
+
+/* 文武边 — outer heavy, inner hairline, breathing space between.
+   Two rules of the same weight is just a double border. */
+.jian-frame {
+  position: relative;
+  margin: 32px 30px 30px;
+  padding: 3px;
+  border: 2px solid rgba(27, 36, 48, 0.2);
+}
+.jian-inner {
+  position: relative;
+  overflow: hidden;
+  padding: 26px 22px 30px;
+  border: 1px solid rgba(27, 36, 48, 0.14);
+}
+
+/* 暗纹 — printed inside the 版心, under the writing, bleeding off the
+   lower-right corner. Faint enough to read through. */
+.jian-motif {
+  position: absolute;
+  right: -16px;
+  bottom: -20px;
+  width: 190px;
+  height: 190px;
+  color: var(--accent);
+  opacity: 0.36;
+  pointer-events: none;
+}
+
+/* 题头 — 题 and 款, centred over the writing they belong to */
+.jian-head {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.8rem;
+  padding-bottom: 1.6rem;
+}
+.jh-title {
+  font-family: var(--serif);
+  font-size: 1rem;
+  letter-spacing: 0.16em;
+  color: var(--ink);
+}
+.jh-by { font-size: 0.56rem; letter-spacing: 0.14em; }
+
+/* ── 两阙 ─────────────────────────────────────────────────
+   上阙 over 下阙, one 句 per line, on the centre. Stacked rather than set
+   side by side: two blocks abreast makes the reader decide which to read
+   first, and a 词 has an order. */
+.jian-text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.jian-que {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.que-mark {
+  margin-bottom: 0.4rem;
+  font-size: 0.5rem;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.jline {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.58rem;
+  line-height: var(--pitch);
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  text-align: center;
+  text-wrap: nowrap;
+}
+
+/* 落墨 — the sheet lands first and the writing goes on afterwards, one 句
+   at a time, down the page: the direction it is being read in.
+
+   Gated on a class verse.js writes to <html> during parse. Hiding the 词 on
+   the strength of .js alone would leave it invisible for good on a page
+   whose script failed — this way the fallback is a 笺 already written on. */
+:root.jian-live .jian.is-read .jline {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 420ms var(--soft), transform 420ms var(--soft);
+  /* a running 32ms per 句, plus one held beat where 上阙 becomes 下阙 —
+     a brush pauses when it changes stanza, it does not pause on a schedule */
+  transition-delay: calc(var(--k, 0) * 32ms + var(--g, 0) * 90ms);
+}
+:root.jian-live .jian.is-read.ink .jline { opacity: 1; transform: none; }
+
+.jian-seal {
+  position: absolute;
+  left: 32px;
+  bottom: 16px;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  color: var(--accent);
+}
+.jian-seal svg { width: 22px; height: 22px; opacity: 0.6; }
+.jian-seal .mono { font-size: 0.56rem; letter-spacing: 0.14em; }
+
+/* ── 抽拉舌 ───────────────────────────────────────────────
+   On the RIGHT edge, because that is the way the 副笺 travels. A tab on
+   the bottom edge promises the note will come out downward — which is what
+   it used to do, and what pushed the 词 off the screen. */
+.jian-tab {
+  position: absolute;
+  left: 100%;
+  margin-left: -1px;
+  top: 42%;
+  z-index: 6;
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 16px 8px 18px;
+  writing-mode: vertical-rl;
+  font-family: var(--serif);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  cursor: pointer;
+  background: var(--bg);
+  border: 1px solid var(--edge, #e2e6eb);
+  border-left: 0;
+  border-radius: 0 3px 3px 0;
+  transition: color var(--mid) var(--soft), transform var(--mid) var(--spring);
+}
+.jian-tab:hover { color: var(--ink); transform: translateX(3px); }
+.jian-tab:active { transform: translateX(1px); }
+.jian-tab i {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(-45deg);
+  transform-origin: 55% 55%;
+  transition: transform var(--slow) var(--soft);
+}
+.jian.is-open .jian-tab { color: var(--accent); }
+.jian.is-open .jian-tab i { transform: rotate(135deg); }
+
+/* ── 副笺 ─────────────────────────────────────────────────
+   Another sheet, plainer: no 罗纹, no 暗纹, no 版框.
+
+   It comes out sideways, from under the 笺's right edge. Opening it below
+   the 词 was the first attempt and it broke the one promise this direction
+   rests on: anything under a sheet this tall starts past the fold, so the
+   poem was pushed off the screen and you were back to one voice at a time
+   — the thing 翻面 was rejected for.
+
+   The clip box starts exactly ON that edge, so the sheet is genuinely
+   revealed rather than fading in beside it. */
+.jian-sub {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  /* 3.5rem clears the tab, then the sheet, then room for its shadow */
+  width: calc(3.5rem + 360px + 24px);
+  pointer-events: none;
+  z-index: 2;
+}
+/* no height: the clip box takes the sheet's own, so a long 今译 is never cut
+   off. padding-bottom leaves the shadow somewhere to fall. */
+.sub-clip { overflow: hidden; padding-bottom: 30px; }
+
+.sub-sheet {
+  width: 360px;
+  margin-left: 3.5rem;
+  padding: 1.4rem 1.6rem 1.6rem;
+  background: color-mix(in srgb, var(--surface) 55%, var(--bg));
+  border: 1px solid var(--line);
+  box-shadow: 0 22px 40px -26px rgba(27, 36, 48, 0.34);
+  pointer-events: auto;
+  /* parked entirely behind the 笺 — its right edge sits on the clip edge */
+  transform: translateX(calc(-100% - 3.5rem));
+  transition: transform 460ms var(--soft);
+}
+.jian.is-open .sub-sheet {
+  transform: none;
+  transition: transform 660ms var(--out);
+}
+.sub-rule {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+.sub-rule .mono:first-child { color: var(--accent); letter-spacing: 0.18em; font-size: 0.56rem; }
+.sub-rule .mono:last-child { font-size: 0.56rem; letter-spacing: 0.1em; }
+.sub-sheet p {
+  margin: 0.9rem 0 0;
+  font-family: var(--serif);
+  font-size: 0.86rem;
+  line-height: 2.15;
+  color: var(--muted);
+  text-align: justify;
+  text-justify: inter-character;
+  text-wrap: pretty;
+}
+
+/* ─────────────────────────────────────────────────────────
+   案上的那一面
+   ───────────────────────────────────────────────────────── */
+
+/* left/top rather than a translate, so the x can be a percentage and the
+   heap tightens as the window narrows instead of running off the edge */
+.jian.is-filed {
+  position: absolute;
+  left: var(--x, 0);
+  top: var(--y, 0);
+  width: 208px;
+  height: 290px;
+  transform: rotate(var(--r, 0deg));
+  transform-origin: 50% 60%;
+  z-index: var(--z, 1);
+  /* leaving is the quiet half: no spring on the way back down, or the whole
+     heap wobbles every time the pointer crosses it */
+  transition: transform var(--mid) var(--soft);
+}
+
+/* the sheets fall onto the desk on arrival rather than being there already.
+   `backwards` and not `both`: a forwards fill would pin transform at the
+   final keyframe and hover could never move it again. */
+@keyframes jianSettle {
+  from { opacity: 0; transform: translateY(-26px) rotate(0deg); }
+}
+:root.jian-live .jian-heap.settling .jian.is-filed {
+  animation: jianSettle 560ms var(--spring) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* Paper lifts and squares up; it does not zoom. The lean only relaxes to a
+   quarter — going flat on hover makes every sheet look identical the moment
+   you touch it, and the scatter is what tells them apart. */
+.jian.is-filed:hover,
+.jian.is-filed:focus-within {
+  transform: rotate(calc(var(--r, 0deg) * 0.25)) translateY(-12px);
+  z-index: 30;
+  transition: transform 320ms var(--spring);
+}
+/* the press has to answer before the flight can start — capturing the old
+   state for a view transition costs a frame or two, and without this the
+   sheet just sits there through them */
+.jian.is-filed:active {
+  transform: rotate(calc(var(--r, 0deg) * 0.25)) translateY(-5px);
+  transition: transform 90ms var(--soft);
+}
+
+.jian.is-filed .jian-paper {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 26px 18px 16px 26px;
+  background-image: repeating-linear-gradient(0deg, transparent 0 33px, rgba(27, 36, 48, 0.035) 33px 34px);
+  box-shadow: -6px 16px 28px -18px rgba(27, 36, 48, 0.42);
+  transition: box-shadow var(--slow) var(--soft);
+}
+.jian.is-filed:hover .jian-paper,
+.jian.is-filed:focus-within .jian-paper {
+  box-shadow: -10px 30px 46px -22px rgba(27, 36, 48, 0.46);
+}
+
+/* the 题签 shrinks but stays: it is how you know which 笺 you are reaching
+   for before any of them is open */
+.jian.is-filed .jian-tag {
+  left: -5px;
+  top: 22px;
+  padding: 11px 5px;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  box-shadow: 2px 2px 6px -3px rgba(27, 36, 48, 0.34);
+}
+
+.jian.is-filed .jian-frame,
+.jian.is-filed .jian-seal,
+.jian.is-filed .jian-tab,
+.jian.is-filed .jian-sub { display: none; }
+
+.jian-ex, .jian-by { display: none; }
+
+.jian.is-filed .jian-ex {
+  display: block;
+  position: relative;
+  margin-top: 0.4rem;
+  font-family: var(--serif);
+  font-size: 0.94rem;
+  line-height: 1.95;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  text-wrap: pretty;
+  transition: color var(--mid) var(--soft);
+}
+.jian.is-filed .jian-by {
+  display: block;
+  position: relative;
+  font-size: 0.54rem;
+  letter-spacing: 0.14em;
+  transition: color var(--mid) var(--soft);
+}
+.jian.is-filed:hover .jian-ex,
+.jian.is-filed:focus-within .jian-ex { color: var(--accent-deep); }
+.jian.is-filed:hover .jian-by,
+.jian.is-filed:focus-within .jian-by { color: var(--accent); }
+
+/* the whole sheet is the hit target, and it is a real link, so with no
+   script it still goes somewhere the 词 can be read */
+.jian-grab { display: none; }
+.jian.is-filed .jian-grab {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  cursor: pointer;
+}
+
+/* ─────────────────────────────────────────────────────────
+   读位
+
+   Laid over the desk rather than sitting in the flow, so the heap is
+   untouched underneath and the sheet you picked has the page to itself.
+   The wash is the site's own paper at 97%, the same way the 影 lightbox
+   does it — a dark scrim would be the only dark thing on this site.
+   ───────────────────────────────────────────────────────── */
+
+.jian-lb {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4rem 2rem 6rem;
+}
+.jian-lb.on { display: flex; align-items: flex-start; justify-content: center; }
+
+.jian-veil {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--bg) 97%, transparent);
+  view-transition-name: jian-veil;
+}
+
+.jian-close {
+  position: fixed;
+  top: 1.6rem;
+  right: 1.8rem;
+  z-index: 4;
+  appearance: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  view-transition-name: jian-x;
+  transition: color var(--fast) var(--soft), border-color var(--fast) var(--soft),
+              transform var(--fast) var(--spring);
+}
+.jian-close:hover { color: var(--accent); border-color: var(--accent); transform: rotate(90deg); }
+
+/* The 笺 stays put and the group slides to make room, so pulling the 今译
+   out never shoves the 词 you are reading off the centre by itself — the
+   two move together, as one gesture. */
+.jread-group {
+  position: relative;
+  width: var(--sheet);
+  flex: 0 0 auto;
+  /* closing is 460/soft on both this and the sheet, opening 660/out on both:
+     the two move as one gesture, and it is the same asymmetry the 副笺 has —
+     drawn out deliberately, put back briskly */
+  transition: transform 460ms var(--soft);
+}
+.jian-lb:has(.jian.is-open) .jread-group {
+  transform: translateX(-208px);
+  transition: transform 660ms var(--out);
+}
+
+/* ─────────────────────────────────────────────────────────
+   开笺 — the flight
+
+   main.css dresses every view transition as a NAVIGATION: the root
+   snapshot fades out and the new one rises 8px. Right between pages, wrong
+   here — nothing navigated, one sheet was picked up. So verse.js marks the
+   document while the flight runs, and for that moment the root is held
+   perfectly still and only the named things move: the 笺 itself, morphing
+   between its spot in the heap and the reading frame, and the wash.
+
+   plus-lighter is the browser's default blend for the cross-fade, and on
+   paper this pale it blows the midpoint out to white — so it blends
+   normally instead.
+   ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  :root.jian-swap::view-transition-group(*) {
+    animation-duration: 520ms;
+    animation-timing-function: var(--out);
+  }
+  /* Putting a sheet back is not the same act as picking one up. Lifting is
+     deliberate and decelerates into place; returning is brisker and just
+     settles. Same asymmetry the 副笺 and the /vinyl/ lid already carry. */
+  :root.jian-swap.jian-back::view-transition-group(*) {
+    animation-duration: 400ms;
+    animation-timing-function: var(--soft);
+  }
+
+  /* plus-lighter is the default blend for the cross-fade, and on paper this
+     pale it blows the midpoint out to white */
+  :root.jian-swap::view-transition-old(*),
+  :root.jian-swap::view-transition-new(*) { mix-blend-mode: normal; }
+
+  /* The two faces are NOT a cross-fade at the group's speed. The heap face
+     goes early, and the read face — 版框, 题头, and an empty writing area —
+     draws itself in over the second half, so what lands is a blank sheet and
+     the 词 is written on afterwards. Left at the browser's default the
+     contents swapped in the first 250ms while the box was still growing, and
+     the whole "paper first, ink second" beat was lost inside the flight. */
+  :root.jian-swap::view-transition-old(jian-open) { animation: fadeOut 200ms var(--soft) both; }
+  :root.jian-swap::view-transition-new(jian-open) { animation: fadeIn 360ms var(--soft) 170ms both; }
+  :root.jian-swap.jian-back::view-transition-old(jian-open) { animation: fadeOut 180ms var(--soft) both; }
+  :root.jian-swap.jian-back::view-transition-new(jian-open) { animation: fadeIn 260ms var(--soft) 130ms both; }
+
+  /* the wash and the ✕ are not paper — both should be there before the sheet
+     arrives and gone before it lands back */
+  :root.jian-swap::view-transition-old(jian-veil),
+  :root.jian-swap::view-transition-new(jian-veil),
+  :root.jian-swap::view-transition-old(jian-x),
+  :root.jian-swap::view-transition-new(jian-x) { animation-duration: 300ms; }
+
+  :root.jian-swap::view-transition-old(root),
+  :root.jian-swap::view-transition-new(root) {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   窄屏
+   The heap cannot scatter on a phone, so it lies in a grid instead — but
+   each sheet keeps a little of its lean, which is the difference between
+   paper and tiles. Reading is still an overlay; it just fills the screen.
+   ───────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  :root { --pitch: 42px; --sheet: 100%; }
+
+  .jian-heap {
+    height: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.6rem 1rem;
+    padding: 0.6rem 0.4rem 0;
+  }
+  .jian.is-filed {
+    position: static;
+    flex: 0 0 auto;
+    width: calc(50% - 0.5rem);
+    height: 240px;
+    transform: rotate(calc(var(--r, 0deg) * 0.4));
+  }
+  .jian.is-filed:hover,
+  .jian.is-filed:focus-within { transform: rotate(0deg) translateY(-6px); }
+  .jian.is-filed .jian-paper { padding: 22px 14px 14px 22px; }
+  .jian.is-filed .jian-ex { font-size: 0.88rem; line-height: 1.85; }
+
+  .jian-lb { padding: 3.2rem 1rem 4rem; }
+  .jian-close { top: 1rem; right: 1rem; }
+  .jread-group { width: 100%; max-width: 468px; }
+  /* nowhere to slide to, and no need: the note opens under the 词 */
+  .jian-lb:has(.jian.is-open) .jread-group { transform: none; }
+
+  .jian-paper { min-height: 0; }
+  .jian-frame { margin: 22px 18px 20px; }
+  .jian-inner { padding: 20px 14px 22px; }
+  .jian-tag { top: 38px; font-size: 0.82rem; padding: 13px 6px; }
+  .jian-seal { left: 20px; bottom: 12px; }
+  .jian-motif { width: 140px; height: 140px; }
+  .jline { font-size: 1.3rem; }
+  .jian-head { padding-bottom: 1.2rem; }
+
+  .jian-tab {
+    left: 20px;
+    margin-left: 0;
+    top: auto;
+    bottom: -1px;
+    flex-direction: row;
+    writing-mode: horizontal-tb;
+    padding: 7px 16px 8px;
+    border: 1px solid var(--edge, #e2e6eb);
+    border-bottom: 0;
+    border-radius: 3px 3px 0 0;
+  }
+  .jian-tab:hover { transform: translateY(3px); }
+  .jian-tab:active { transform: translateY(1px); }
+  .jian-tab i { transform: rotate(45deg); }
+  .jian.is-open .jian-tab i { transform: rotate(225deg); }
+
+  .jian-sub {
+    position: static;
+    width: auto;
+    pointer-events: auto;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 440ms var(--soft);
+  }
+  .jian.is-open .jian-sub {
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 640ms var(--out);
+  }
+  .sub-clip { padding-bottom: 0; }
+  .sub-sheet {
+    width: auto;
+    margin-left: 14px;
+    padding: 1.1rem 1.2rem 1.3rem;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .jian.is-filed { width: 100%; height: 210px; transform: rotate(calc(var(--r, 0deg) * 0.3)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jian.is-filed,
+  .jian-paper,
+  .jian-tab,
+  .jian-tab i,
+  .jian-sub,
+  .sub-sheet,
+  .jread-group,
+  .jian-close,
+  .jian-ex,
+  .jian-by { transition: none; }
+  :root.jian-live .jian-heap.settling .jian.is-filed { animation: none; }
+  :root.jian-live .jian.is-read .jline { opacity: 1; transform: none; transition: none; }
+}

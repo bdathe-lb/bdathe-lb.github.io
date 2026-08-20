@@ -1,0 +1,12 @@
+{{ define "main" }}
+<header class="article-head">
+  <h1>{{ .Title }}</h1>
+</header>
+
+<div class="article-grid">
+  <div class="margin-col"></div>
+  <article class="prose">
+    {{ .Content }}
+  </article>
+</div>
+{{ end }}

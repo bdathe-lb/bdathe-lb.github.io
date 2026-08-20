@@ -1,0 +1,80 @@
+{% macro render_slides(node) %}
+    {% if navtree.is_node_leaf(node.identifier) %}
+        <li class="report-row">
+            <a
+                class="report-primary"
+                href="{{ node.identifier }}"
+                target="_blank"
+                rel="noopener"
+                aria-label="打开 {{ node.data }} 的演示"
+            >
+                <time datetime="{{ node.data }}">{{ node.data }}</time>
+                <span>打开演示 <span aria-hidden="true">→</span></span>
+            </a>
+            <nav class="report-actions" aria-label="{{ node.data }} 的其他格式">
+                <a href="{{ node.identifier }}?showNotes=true" target="_blank" rel="noopener">演讲者视图</a>
+                <a href="{{ node.identifier }}?print-pdf" target="_blank" rel="noopener">PDF</a>
+                <a href="{{ node.identifier }}?print-pdf&showNotes=separate-page" target="_blank" rel="noopener">含备注 PDF</a>
+            </nav>
+        </li>
+    {% else %}
+        {% for child in navtree.get_node_children(node.identifier) | reverse %}
+            {{ render_slides(child) }}
+        {% endfor %}
+    {% endif %}
+{% endmacro %}
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        {% if favicon %}
+            <link rel="icon" href="{{ favicon }}" />
+        {% endif %}
+
+        {% if theme %}
+            <link rel="stylesheet" href="{{ theme }}" />
+        {% endif %}
+
+        <title>{{ title }}</title>
+    </head>
+    <body>
+        <div class="page-shell">
+            <header class="site-header">
+                <div class="brand">
+                    <img src="./assets/logo/NUAA_logo.svg" alt="南京航空航天大学" />
+                    <span>{{ title }}</span>
+                </div>
+                <div class="intro">
+                    <p class="eyebrow">Presentation archive</p>
+                    <h1>组会汇报</h1>
+                    <p class="lede">按日期浏览历次研究进展与论文汇报。</p>
+                </div>
+            </header>
+
+            <main>
+                <section class="reports" aria-labelledby="reports-title">
+                    <div class="section-heading">
+                        <h2 id="reports-title">全部汇报</h2>
+                        <span>{{ navtree.tree.leaves() | length }} 份</span>
+                    </div>
+
+                    <ol class="report-list">
+                        {% for node in navtree.get_node_children(navtree.tree.root) | reverse %}
+                            {{ render_slides(node) }}
+                        {% endfor %}
+                    </ol>
+                </section>
+            </main>
+
+            <footer>
+                最后构建于
+                <time datetime="{{ build_datetime.isoformat() }}">
+                    {{ build_datetime.strftime('%Y-%m-%d %H:%M') }} UTC
+                </time>
+            </footer>
+        </div>
+    </body>
+</html>

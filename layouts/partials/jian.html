@@ -1,0 +1,159 @@
+{{/* One 笺, in whichever of its two faces the caller asks for.
+
+     .p      a row out of data/poems.yaml
+     .stock  motif key → paper colours
+     .state  "read" | "filed"
+     .x .y .r .z   where it lies in the heap (filed only)
+
+     Both faces ship in every copy — verse.css shows one and hides the
+     other — so opening a 笺 is a move, not a re-render, and a view
+     transition has one element to tween. */}}
+
+{{ $p := .p }}
+{{ $state := .state }}
+
+{{ $parts := split $p.title "·" }}
+{{ $cipai := index $parts 0 }}
+{{ $head := "" }}
+{{ if gt (len $parts) 1 }}{{ $head = index $parts 1 }}{{ end }}
+
+{{ $motif := $p.motif | default "none" }}
+{{ $ink := index .stock $motif | default (index .stock "none") }}
+{{ $by := printf "%s · %s" $p.author ($p.dynasty | default "") }}
+
+{{ $style := printf "--tint:%s; --edge:%s" $ink.tint $ink.edge }}
+{{ if eq $state "filed" }}
+  {{/* --i is the order the sheets settle onto the desk on arrival */}}
+  {{ $style = printf "%s; --x:%s; --y:%dpx; --r:%s; --z:%d; --i:%d"
+      $style .x .y .r .z (.i | default 0) }}
+{{ end }}
+
+<article class="jian {{ if eq $state "read" }}is-read{{ else }}is-filed{{ end }}"
+         role="listitem"
+         id="jian-{{ $p.slug }}"
+         data-slug="{{ $p.slug }}"
+         {{ if eq $state "read" }}tabindex="-1"{{ end }}
+         style="{{ $style | safeCSS }}">
+
+  <div class="jian-paper">
+
+    {{/* 题签 — pasted on the left edge, over the 版框, in a paper one
+         shade whiter than the 笺 it sits on */}}
+    <span class="jian-tag" aria-hidden="true">{{ $cipai }}</span>
+
+    {{/* 文武边 — outer heavy, inner hairline, breathing space between.
+         Two rules of the same weight is just a double border. */}}
+    <div class="jian-frame">
+      <div class="jian-inner">
+
+        {{/* 暗纹 — printed inside the 版心, under the writing, bleeding off
+             the lower-right corner. That is where 笺纸 puts it. */}}
+        {{ if eq $motif "mei" }}
+          <svg class="jian-motif" viewBox="0 0 210 210" fill="none" aria-hidden="true">
+            <path d="M12 200C50 168 70 132 84 94c10-28 25-52 46-70" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M84 94c-16-7-30-5-44 7M108 52c-17-4-31 2-41 16M136 26c-15-1-27 6-35 18" stroke="currentColor" stroke-opacity="0.4" stroke-width="1" stroke-linecap="round"/>
+            <g stroke="currentColor" stroke-opacity="0.44" stroke-width="1">
+              <circle cx="144" cy="32" r="7.5"/><circle cx="165" cy="20" r="5.5"/><circle cx="117" cy="64" r="6.5"/>
+              <circle cx="94" cy="98" r="7"/><circle cx="67" cy="126" r="5.5"/><circle cx="48" cy="158" r="6.5"/>
+            </g>
+          </svg>
+        {{ else if eq $motif "ju" }}
+          <svg class="jian-motif" viewBox="0 0 196 196" fill="none" aria-hidden="true">
+            <g stroke="currentColor" stroke-opacity="0.46" stroke-width="1" stroke-linecap="round">
+              <circle cx="132" cy="62" r="10"/>
+              <path d="M132 42v-10M132 92v-10M152 62h10M102 62h10M147 47l7-7M147 77l7 7M117 47l-7-7M117 77l-7 7"/>
+              <path d="M132 72c-11 22-29 46-53 68"/>
+              <path d="M92 118c-14-6-26-2-35 9M106 96c-13-7-25-4-34 5" stroke-opacity="0.34"/>
+            </g>
+          </svg>
+        {{ else if eq $motif "liu" }}
+          <svg class="jian-motif" viewBox="0 0 220 220" fill="none" aria-hidden="true">
+            <g stroke="currentColor" stroke-opacity="0.42" stroke-width="1" stroke-linecap="round">
+              <path d="M190 8C177 48 168 100 172 162"/>
+              <path d="M179 32c-15 22-22 53-20 86M166 56c-18 20-27 48-24 82M195 66c-9 24-11 53-7 82" stroke-opacity="0.3"/>
+              <path d="M172 48c-8 3-12 9-13 16M159 77c-8 3-12 9-13 16M185 86c-8 3-12 9-13 16M163 110c-8 3-12 9-13 16" stroke-opacity="0.34"/>
+            </g>
+          </svg>
+        {{ end }}
+
+        <div class="jian-head">
+          <span class="jh-title">{{ with $head }}{{ . }}{{ else }}{{ $cipai }}{{ end }}</span>
+          <span class="jh-by mono">{{ $by }}</span>
+        </div>
+
+        {{/* One 句 per line. The 句读 is carried by the line break itself, so
+             the commas and full stops are dropped rather than printed a second
+             time at the end of every line, where they would only ruin the
+             centring. ？ and ！ stay: they carry tone, not separation. */}}
+        {{/* --k is a RUNNING line number, not a per-阙 one, and --g carries the
+             阙 it belongs to. The old formula faked the running number with
+             g*6+k, which meant the beat between 上阙 and 下阙 existed only when
+             上阙 happened to be short of six 句 — present in 鹧鸪天, absent in
+             一剪梅. Now the pause between the two 阙 is stated rather than
+             falling out of the arithmetic. */}}
+        {{ $i := 0 }}
+        <div class="jian-text">
+          {{ range $g, $s := $p.sections }}
+            <div class="jian-que">
+              <span class="que-mark mono" aria-hidden="true">{{ $s.name }}</span>
+              {{ $t := $s.text }}
+              {{ $t = replace $t "。" "¤" }}
+              {{ $t = replace $t "，" "¤" }}
+              {{ $t = replace $t "、" "¤" }}
+              {{ $t = replace $t "；" "¤" }}
+              {{ $t = replace $t "：" "¤" }}
+              {{ $t = replace $t "？" "？¤" }}
+              {{ $t = replace $t "！" "！¤" }}
+              {{ range split $t "¤" }}
+                {{ with . }}
+                  <p class="jline" style="--k:{{ $i }}; --g:{{ $g }}">{{ . }}</p>
+                  {{ $i = add $i 1 }}
+                {{ end }}
+              {{ end }}
+            </div>
+          {{ end }}
+        </div>
+
+      </div>
+    </div>
+
+    <div class="jian-seal" aria-hidden="true">
+      <svg viewBox="0 0 26 26" fill="none">
+        <rect x="1.3" y="1.3" width="23.4" height="23.4" rx="1.2" stroke="currentColor" stroke-width="1.9"/>
+        <path d="M7 8.5h12M7 13h12M7 17.5h12M11 5.5v15M15 5.5v15" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/>
+      </svg>
+      <span class="mono">{{ $p.paper | default "素笺" }}{{ with $p.dynasty }} · {{ . }}{{ end }}</span>
+    </div>
+
+    {{/* 抽拉舌 — on the right edge, pointing the way the 副笺 travels */}}
+    {{ with $p.interpretation }}
+      <button type="button" class="jian-tab" aria-expanded="false">
+        <span>今译</span>
+        <i aria-hidden="true"></i>
+      </button>
+    {{ end }}
+
+    {{/* 躺在案上的那一面。The hit target is a real link to the same 词 in
+         the ordinary index — verse.js takes the click and opens the sheet
+         instead, but with no script the paper is still a way through rather
+         than a picture of one. */}}
+    <span class="jian-ex" aria-hidden="true">{{ $p.excerpt | default $p.title }}</span>
+    <span class="jian-by mono" aria-hidden="true">{{ $p.author }}{{ with $p.dynasty }} · {{ . }}{{ end }}</span>
+    <a class="jian-grab" href="{{ printf "/poems/#%s" $p.slug | relURL }}"><span class="visually-hidden">读《{{ $p.title }}》</span></a>
+  </div>
+
+  {{/* 副笺 — another sheet, plainer: no 罗纹, no 暗纹, no 版框. It opens the
+       space it needs, so a long 今译 and a short one both sit right. */}}
+  {{ with $p.interpretation }}
+    <div class="jian-sub"><div class="sub-clip">
+      <div class="sub-sheet">
+        <div class="sub-rule">
+          <span class="mono">今译 · 副笺</span>
+          <span class="mono">{{ $by }}</span>
+        </div>
+        <p>{{ . }}</p>
+      </div>
+    </div></div>
+  {{ end }}
+
+</article>

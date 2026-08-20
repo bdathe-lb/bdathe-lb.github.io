@@ -1,0 +1,84 @@
+{{ define "main" }}
+{{/* ═══════════════════════════════════════════════════════════
+     诗 · 笺
+
+     A heap of 笺 left on the desk. Nothing is open until you open it:
+     the five sheets lie scattered and overlapping, each with its 词牌
+     on a 题签 and its 名句 showing, and picking one lifts it off the
+     pile onto a cleared desk to be read.
+
+     Both faces of every 笺 ship in the markup (partials/jian.html), so
+     opening one is that element being MOVED from the heap into the
+     reading frame, not re-rendered — which is exactly the shape a
+     same-document view transition wants, and why verse.js can hand the
+     whole flight to the browser.
+
+     Without JS the sheets are links to /poems/#slug. Nothing on the page is dead.
+     ═══════════════════════════════════════════════════════════ */}}
+
+{{ $css := resources.Get "css/verse.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+
+{{ $poems := sort hugo.Data.poems "date" "desc" }}
+{{ $n := len $poems }}
+
+{{/* 暗纹 keys map to paper colour here rather than in the data: 梅 / 菊 / 柳
+     is editorial, #f8f7f9 is not. Anything unrecognised falls back to 素笺.
+     All four sit inside --surface ±2%. */}}
+{{ $stock := dict
+   "none" (dict "tint" "#f7f8fa" "edge" "#e2e6eb")
+   "mei"  (dict "tint" "#f8f7f9" "edge" "#e5e3e8")
+   "ju"   (dict "tint" "#f8f8f6" "edge" "#e6e6df")
+   "liu"  (dict "tint" "#f6f9f8" "edge" "#dfe7e4")
+}}
+
+{{/* Where each sheet lies. Hand-placed rather than generated: paper does
+     fall at random, but a heap you are meant to read has to keep every
+     名句 legible and every sheet reachable, and random gets that wrong
+     about a third of the time. x is a percentage so the heap tightens as
+     the window narrows instead of running off the edge; five spots, then
+     it wraps to a second row. */}}
+{{ $spots := slice
+   (dict "x" "1%"  "y" 78 "r" "-6.5deg" "z" 3)
+   (dict "x" "19%" "y" 18 "r" "3.2deg"  "z" 5)
+   (dict "x" "38%" "y" 106 "r" "-2.4deg" "z" 2)
+   (dict "x" "56%" "y" 34 "r" "7.1deg"  "z" 4)
+   (dict "x" "74%" "y" 98 "r" "-4.8deg" "z" 1)
+}}
+{{ $rows := int (math.Ceil (div (float $n) 5)) }}
+
+<section class="jian-desk" id="jianDesk">
+  <div class="rule">
+    <h2>案上</h2><span class="bar"></span>
+  </div>
+
+  {{/* a custom property, not `height` — an inline height would beat the
+       narrow-screen rule that lets the heap lie in a grid instead */}}
+  <div class="jian-heap" id="jianHeap" role="list" style="--heap-h: {{ mul $rows 430 }}px">
+    {{ range $i, $p := $poems }}
+      {{ $spot := index $spots (mod $i 5) }}
+      {{ $wrap := div $i 5 }}
+      {{ partial "jian.html" (dict
+          "p" $p "stock" $stock "state" "filed" "i" $i
+          "x" $spot.x "y" (add $spot.y (mul $wrap 396)) "r" $spot.r "z" $spot.z) }}
+    {{ end }}
+  </div>
+</section>
+
+{{/* 读位 — empty until a 笺 is carried into it. Fixed over the desk rather
+     than a slot in the flow: the heap must not reflow when one is taken out
+     of it, or every remaining sheet would slide while the one you picked is
+     still in the air. */}}
+<div class="jian-lb" id="jianLb" aria-hidden="true">
+  <div class="jian-veil" id="jianVeil"></div>
+  <button type="button" class="jian-close" id="jianClose" aria-label="放回案上">✕</button>
+  <div class="jread-group" id="jianOpen" role="dialog" aria-modal="true" aria-label="读词"></div>
+</div>
+
+<p class="visually-hidden" aria-live="polite" id="jianLive"></p>
+
+{{/* No defer: this runs the moment the heap is parsed, so a sheet that is
+     about to be written on is never painted with its 词 already inked. */}}
+{{ $js := resources.Get "js/verse.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}"></script>
+{{ end }}
