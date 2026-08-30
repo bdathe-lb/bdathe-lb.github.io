@@ -30,6 +30,24 @@
 {{- $latestPoem := index $poems 0 -}}
 {{- $latestTrack := index $tracks 0 -}}
 {{- $latestPhoto := index $photos 0 -}}
+{{- $latestSlideTitle := "" -}}
+{{- $latestSlideDate := "" -}}
+{{- with index (sort hugo.Data.slides "date" "desc") 0 -}}
+  {{- $latestSlideDate = replace .date "-" "." -}}
+  {{- $path := printf "static/slides/site/slides/%s" .file -}}
+  {{- if fileExists $path -}}
+    {{- $raw := readFile $path -}}
+    {{- $body := "" -}}
+    {{- with findRESubmatch `(?s)<textarea data-template>(.*?)</textarea>` $raw 1 -}}
+      {{- $body = index (index . 0) 1 -}}
+    {{- end -}}
+    {{- with $body -}}
+      {{- with findRESubmatch `(?m)^#[^#]\s*(.+?)\s*$` . 1 -}}
+        {{- $latestSlideTitle = index (index . 0) 1 -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
 
 <section class="st-hero">
 
@@ -138,6 +156,7 @@
                data-kicker="文 · WRITING" data-title="{{ $latestPost.Title }}"
                data-meta="{{ $latestPost.Date.Format "2006.01.02" }} · 最近写下">
               <title>文 · 随笔与笔记</title>
+              <rect class="st-hit" x="-60" y="-72" width="120" height="80" aria-hidden="true"/>
               <g class="st-lift">
                 <g class="st-shade st-faint"><path d="M8 -1 H56 M10 -4 H48 M12 -7 H38"/></g>
                 <g class="st-ink st-draw" style="--d:420">
@@ -163,6 +182,7 @@
                data-kicker="诗 · POEMS" data-title="{{ $latestPoem.excerpt }}"
                data-meta="{{ $latestPoem.author }} · {{ $latestPoem.title }}">
               <title>诗 · 案上的五张笺</title>
+              <rect class="st-hit" x="-22" y="-82" width="44" height="90" aria-hidden="true"/>
               <g class="st-lift">
                 <g class="st-shade st-faint"><path d="M8 -1 H34 M10 -4 H28 M12 -7 H22"/></g>
                 <g class="st-ink st-draw" style="--d:480">
@@ -185,6 +205,7 @@
                data-kicker="音 · MUSIC" data-title="{{ $latestTrack.title }}"
                data-meta="{{ $latestTrack.artist }} · 最近在听">
               <title>音 · 唱机与唱片架</title>
+              <rect class="st-hit" x="-48" y="-96" width="94" height="104" aria-hidden="true"/>
               <g class="st-lift">
                 <g class="st-shade st-faint"><path d="M8 -1 H50 M10 -4 H42 M12 -7 H34"/></g>
                 <g class="st-ink st-draw" style="--d:540">
@@ -211,6 +232,7 @@
                data-kicker="影 · PHOTOS" data-title="{{ $latestPhoto.caption | default $latestPhoto.title }}"
                data-meta="{{ $latestPhoto.date }} · 共 {{ len $photos }} 张">
               <title>影 · 一本摊开的相册</title>
+              <rect class="st-hit" x="-44" y="-68" width="88" height="76" aria-hidden="true"/>
               <g class="st-lift">
                 <g class="st-shade st-faint"><path d="M8 -1 H46 M10 -4 H40 M12 -7 H30"/></g>
                 <g class="st-ink st-draw" style="--d:600">
@@ -228,9 +250,10 @@
 
             {{/* 讲 —— 一块立着的讲稿板 */}}
             <a class="stobj" href="{{ "/slides/" | relURL }}" transform="translate(490 336)"
-               data-kicker="讲 · SLIDES" data-title="把想明白的事，讲给别人听。"
-               data-meta="讲稿与演示 · 打开讲稿室">
+               data-kicker="讲 · SLIDES" data-title="{{ $latestSlideTitle | default "讲稿与演示" }}"
+               data-meta="{{ with $latestSlideDate }}{{ . }} · {{ end }}最近一份">
               <title>讲 · 讲稿与演示</title>
+              <rect class="st-hit" x="-34" y="-82" width="68" height="90" aria-hidden="true"/>
               <g class="st-lift">
                 <g class="st-shade st-faint"><path d="M8 -1 H40 M10 -4 H34 M12 -7 H26"/></g>
                 <g class="st-ink st-draw" style="--d:660">

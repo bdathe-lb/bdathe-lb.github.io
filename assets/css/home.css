@@ -232,10 +232,21 @@
 .st-leaves .c { animation-delay: -4.8s; }
 @keyframes stSway { 50% { rotate: 2.4deg; } }
 
-/* ── 物件 ── */
+/* ── 物件 ──
+   热区留在原位（.st-hit），视觉抬起不参与命中。否则指针
+   贴在物件下沿时，一抬 9px 就离开热区，:hover 一直开关，看起来
+   就是闪烁跳动。 */
 .stobj { cursor: pointer; }
 .stobj:focus { outline: none; }
-.st-lift { transition: transform 520ms var(--spring); }
+.st-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+.st-lift {
+  pointer-events: none;
+  transition: transform 520ms var(--spring);
+}
 .stobj:hover .st-lift,
 .stobj:focus-visible .st-lift,
 .stobj.on .st-lift { transform: translateY(-9px); }
@@ -271,6 +282,7 @@
   text-anchor: middle;
   opacity: 0;
   transform: translateY(5px);
+  pointer-events: none;
   transition: opacity 300ms var(--soft), transform 300ms var(--soft);
 }
 .stobj:hover .st-tag,
