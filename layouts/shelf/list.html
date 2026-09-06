@@ -174,12 +174,8 @@
     </span>
   </div>
 
-  {{/* 摊开 —— 抽出一本才长开。空着时不占地方，也不再写操作说明。 */}}
+  {{/* 摊开 —— 抽出一本才长开。空着时不占地方。放回去：点别处或 Esc。 */}}
   <div class="readpost" id="readpost" data-state="empty" aria-live="polite">
-    <div class="rp-bar">
-      <span class="rp-hint mono" id="rpHint"></span>
-      <button type="button" class="rp-back mono" id="rpBack">放回架上</button>
-    </div>
     <div class="rp-more"><div>
       <div class="rp-in">
         <div class="rp-text">
@@ -203,9 +199,6 @@
 <section class="room reveal" id="roomBox">
   <div class="rule">
     <h2>卡片箱</h2><span class="bar"></span>
-    <span class="rule-note mono">笔记 · 用来查的 · 扫过去翻，拖动整排</span>
-    <button type="button" class="nudge" id="navL" aria-label="往前翻">‹</button>
-    <button type="button" class="nudge" id="navR" aria-label="往后翻">›</button>
   </div>
 
   <div class="tray" id="tray">
@@ -243,9 +236,14 @@
                   <span class="card-kicker mono">笔记 · NOTE</span>
                   <span class="card-sum">{{ $n.summary }}</span>
                   <span class="card-tags">{{ range $n.tags }}<span>{{ . }}</span>{{ end }}</span>
-                  <span class="card-len mono"><span>{{ $n.words }} 字</span><span>{{ $n.minutes }} 分钟</span></span>
+                  <span class="card-len mono">
+                    <span>{{ $n.words }} 字</span>
+                    <span class="card-foot-r">
+                      <span class="card-min">{{ $n.minutes }} 分钟</span>
+                      <span class="card-go">读全文 <span>→</span></span>
+                    </span>
+                  </span>
                 </span>
-                <span class="card-go mono">读全文 <span>→</span></span>
               </span>
             </a>
           {{ end }}
@@ -256,15 +254,6 @@
     <span class="cap cap-l" aria-hidden="true"></span>
     <span class="cap cap-r" aria-hidden="true"></span>
     <span class="tray-lip" aria-hidden="true"></span>
-  </div>
-
-  {{/* 索引条 —— 一格一篇，高即字数，点一格直接抽出那张 */}}
-  <div class="indexbar">
-    <div class="ticks" id="ticks"></div>
-    <div class="indexbar-foot mono">
-      <span>索引条 · 一格一张 · 高即字数</span>
-      <span id="boxFoot">{{ len $notes }} 张</span>
-    </div>
   </div>
 </section>
 {{ end }}

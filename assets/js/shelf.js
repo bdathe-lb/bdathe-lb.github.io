@@ -37,9 +37,6 @@
     var books = Array.prototype.slice.call(caseEl.querySelectorAll('.book'));
     if (!books.length) return;
 
-    var rpHint = document.getElementById('rpHint');
-    var HINT = rpHint ? rpHint.textContent : '';
-    var rpK = document.getElementById('rpK');
     var rpT = document.getElementById('rpT');
     var rpS = document.getElementById('rpS');
     var rpM = document.getElementById('rpM');
@@ -68,7 +65,6 @@
         rpTags.appendChild(s);
       });
 
-      if (rpHint) rpHint.textContent = '摊开 · 《' + (b.getAttribute('data-title') || '') + '》';
       rp.setAttribute('data-state', 'open');
       if (!still) {
         rp.classList.remove('swap');
@@ -87,7 +83,6 @@
     function shelve() {
       if (out) out.classList.remove('out');
       out = null;
-      if (rpHint) rpHint.textContent = HINT;
       rp.setAttribute('data-state', 'empty');
       rp.classList.remove('swap');
     }
@@ -102,7 +97,17 @@
       take(b);
     });
 
-    document.getElementById('rpBack').addEventListener('click', shelve);
+    /* 点架上空白、点房间别处，都把书放回去。封面和摊开的说明除外：
+       那两处还承担「读全文」和「换一本」。 */
+    document.addEventListener('click', function (e) {
+      if (!out) return;
+      var t = e.target;
+      if (out.contains(t) || rp.contains(t)) return;
+      var b = t.closest ? t.closest('.book') : null;
+      if (b && !b.classList.contains('dim')) return;
+      shelve();
+    });
+
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') shelve(); });
 
     filters.push(function (tag) {
@@ -123,7 +128,6 @@
   (function box() {
     var tray = document.getElementById('tray');
     var rank = document.getElementById('slots');
-    var ticks = document.getElementById('ticks');
     if (!tray || !rank) return;
 
     var slots = Array.prototype.slice.call(rank.querySelectorAll('.slot'));
@@ -139,14 +143,10 @@
     var span = slots[slots.length - 1]._x + CARD_W;
     var minSh = Math.min(0, tray.clientWidth - span);
     var shift = 0, picked = null, dragging = false, raf = 0;
-    var navL = document.getElementById('navL');
-    var navR = document.getElementById('navR');
 
     function setShift(v) {
       shift = Math.max(minSh, Math.min(0, v));
       rank.style.setProperty('--shift', shift.toFixed(1) + 'px');
-      navL.disabled = shift >= -1;
-      navR.disabled = shift <= minSh + 1;
     }
     addEventListener('resize', function () {
       minSh = Math.min(0, tray.clientWidth - span);
@@ -195,13 +195,17 @@
       tray.addEventListener('pointerleave', function () { if (!picked) rest(); });
     }
 
-    /* ── 拖整排 ── */
+    /* ── 拖整排 ──
+       只从箱子空白处起手。点在卡片上就不是拖，不然 6px 的手抖会把
+       「抽出 / 再点进去读」吞掉 —— 书架上的书没有这个问题。 */
     var down = null;
     tray.addEventListener('dragstart', function (e) { e.preventDefault(); });
     tray.addEventListener('pointerdown', function (e) {
-      /* 上一次拖拽如果在箱子外面松的手，click 不会来，这个标记会留着
-         把下一次点击吃掉 —— 每次按下先清一遍 */
       tray._justDragged = false;
+      if (e.target.closest && e.target.closest('.slot.card')) {
+        down = null;
+        return;
+      }
       down = { x: e.clientX, shift: shift, moved: false };
       try { tray.setPointerCapture(e.pointerId); } catch (err) {}
     });
@@ -242,7 +246,6 @@
       if (right > tray.clientWidth - 40) setShift(shift - (right - (tray.clientWidth - 40)));
       else if (left < 30) setShift(shift + (30 - left));
 
-      markTick(cards.indexOf(card));
       say('抽出《' + (card.getAttribute('aria-label') || '') + '》');
     }
     function release() {
@@ -253,45 +256,29 @@
         picked = null;
       }
       tray.classList.remove('picked');
-      markTick(-1);
     }
 
     tray.addEventListener('click', function (e) {
       if (tray._justDragged) { tray._justDragged = false; e.preventDefault(); return; }
       var card = e.target.closest ? e.target.closest('.slot.card') : null;
-      if (!card || card.classList.contains('sunk')) { release(); return; }
-      /* 已经抽出来的那一张，再点一次就是打开它读 */
+      if (!card || card.classList.contains('sunk')) return;
+      /* 已经抽出来的那一张，再点一次就是打开它读 ——
+         和架上抽出的书再点一次进正文是同一套 */
       if (card === picked) return;
       e.preventDefault();
       pick(card);
     });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') release(); });
 
-    navL.addEventListener('click', function () { release(); setShift(shift + 320); });
-    navR.addEventListener('click', function () { release(); setShift(shift - 320); });
-
-    /* ── 索引条：一格一张，高即字数，年份换处加一道分隔 ── */
-    var maxW = cards.reduce(function (m, c) { return Math.max(m, +c.getAttribute('data-words') || 0); }, 1);
-    var lastY = null;
-    cards.forEach(function (c) {
-      var t = document.createElement('button');
-      t.type = 'button';
-      t.className = 'tick';
-      var y = c.getAttribute('data-year');
-      if (y !== lastY) { t.classList.add('yr'); t.setAttribute('data-y', y); lastY = y; }
-      t.style.setProperty('--h', Math.round(5 + ((+c.getAttribute('data-words') || 0) / maxW) * 24) + 'px');
-      t.setAttribute('aria-label', c.getAttribute('aria-label') || '');
-      t.appendChild(document.createElement('i'));
-      t.addEventListener('click', function () {
-        if (c.classList.contains('sunk')) return;
-        setShift(320 - c._x);
-        pick(c);
-      });
-      ticks.appendChild(t);
+    /* 点箱子空白、点房间别处，都把卡放回去。抽出的那张除外。 */
+    document.addEventListener('click', function (e) {
+      if (!picked) return;
+      if (picked.contains(e.target)) return;
+      var card = e.target.closest ? e.target.closest('.slot.card') : null;
+      if (card && !card.classList.contains('sunk')) return;
+      release();
+      rest();
     });
-    function markTick(i) {
-      Array.prototype.forEach.call(ticks.children, function (t, k) { t.classList.toggle('on', k === i); });
-    }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { release(); rest(); } });
 
     filters.push(function (tag) {
       release();
@@ -304,12 +291,6 @@
         c.style.rotate = '';
         if (hit) n++;
       });
-      Array.prototype.forEach.call(ticks.children, function (t, k) {
-        t.disabled = cards[k].classList.contains('sunk');
-        t.style.opacity = t.disabled ? '.3' : '';
-      });
-      var foot = document.getElementById('boxFoot');
-      if (foot) foot.textContent = n + ' 张' + (tag === 'all' ? '' : ' · #' + tag);
       return n;
     });
 

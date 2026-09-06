@@ -30,7 +30,7 @@ BASE_URL ?= http://$(HOST):$(PORT)/
 
 .DEFAULT_GOAL := help
 
-.PHONY: help serve open build site slides build-slides sync-slides check clean \
+.PHONY: help serve server open build site slides build-slides sync-slides check clean \
         build-site check-slides covers
 
 # --- help ------------------------------------------------------------------
@@ -70,6 +70,9 @@ serve:
 		--port $(PORT) \
 		--cacheDir $(HUGO_CACHE) \
 		--navigateToChanged
+
+## Alias for `make serve`.
+server: serve
 
 ## Open the local dev URL in a browser.
 open:

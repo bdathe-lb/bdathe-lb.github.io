@@ -2,6 +2,16 @@
 <div class="progress" id="progress"></div>
 
 <header class="article-head">
+  {{ $back := cond (eq (.Params.form | default "essay") "note") "卡片箱" "书架" }}
+  {{ $hash := cond (eq $back "卡片箱") "#roomBox" "#roomShelf" }}
+  <a class="to-shelf" href="{{ "/posts/" | relURL }}{{ $hash }}" aria-label="回到{{ $back }}">
+    {{/* 落地页 st-down 同一支箭头，转过来朝左 */}}
+    <svg viewBox="0 0 42 24" aria-hidden="true">
+      <path d="M39 12 C27 13, 17 11, 7 12"/>
+      <path d="M15 5 C11 8, 7 11, 4 12 C7 13, 11 16, 15 19"/>
+    </svg>
+    {{ $back }}
+  </a>
   <div class="article-meta">
     <span class="mono">{{ .Date.Format "2006.01.02" }}</span>
     <span class="mono">{{ if eq (.Params.form | default "essay") "note" }}笔记{{ else }}随笔{{ end }}</span>

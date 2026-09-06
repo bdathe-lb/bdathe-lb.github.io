@@ -50,25 +50,6 @@
   font-size: 0.55rem;
 }
 
-.nudge {
-  appearance: none;
-  cursor: pointer;
-  flex: 0 0 auto;
-  width: 26px; height: 26px;
-  display: grid;
-  place-items: center;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  transition: color var(--mid) var(--soft), border-color var(--mid) var(--soft),
-              transform var(--mid) var(--spring);
-}
-.nudge:hover { color: var(--accent); border-color: var(--accent); transform: scale(1.12); }
-.nudge:disabled { opacity: 0.3; cursor: default; transform: none; }
-
 /* ═════════════════════════════════════════════════════════
    书架 · 随笔
    ═════════════════════════════════════════════════════════ */
@@ -362,21 +343,6 @@
       0fr → 1fr，和站点里 .poem-body 是同一招 ── */
 .readpost { margin-top: 0; }
 .readpost[data-state='open'] { margin-top: 1.1rem; }
-.rp-bar {
-  display: none;
-  align-items: baseline;
-  gap: 1rem;
-  padding-bottom: 0.7rem;
-  border-bottom: 1px solid var(--line);
-}
-.readpost[data-state='open'] .rp-bar { display: flex; }
-.rp-hint {
-  font-size: 0.58rem;
-  letter-spacing: 0.14em;
-  color: var(--muted);
-  transition: color var(--mid) var(--soft);
-}
-.readpost[data-state='open'] .rp-hint { color: var(--accent-deep); }
 .rp-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 440ms var(--soft); }
 .readpost[data-state='open'] .rp-more { grid-template-rows: 1fr; }
 .rp-more > div { overflow: hidden; }
@@ -404,24 +370,6 @@
 .rp-go { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.2rem; font-size: 0.64rem; letter-spacing: 0.14em; color: var(--accent-deep); }
 .rp-go span { transition: transform var(--mid) var(--soft); }
 .rp-go:hover span { transform: translateX(4px); }
-.rp-back {
-  margin-left: auto;
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.14em;
-  color: var(--muted);
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: color var(--mid) var(--soft), opacity var(--mid) var(--soft);
-}
-.readpost[data-state='open'] .rp-back { opacity: 1; pointer-events: auto; }
-.rp-back:hover { color: var(--accent); }
 /* 换一本的时候，说明自己也换一次 */
 .readpost.swap .rp-k, .readpost.swap h3, .readpost.swap .rp-s { animation: rpIn 420ms var(--soft) both; }
 .readpost.swap h3 { animation-delay: 45ms; }
@@ -607,6 +555,7 @@
 .card-len {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   margin-top: 0.55rem;
   padding-top: 0.45rem;
   border-top: 1px solid var(--line);
@@ -614,6 +563,9 @@
   letter-spacing: 0.08em;
   color: var(--muted);
 }
+.card-foot-r { position: relative; }
+.card-min { transition: opacity var(--mid) var(--soft); }
+.slot.lift .card-min { opacity: 0; }
 
 /* 隔板（年） */
 .sep { height: 368px; pointer-events: none; }
@@ -654,14 +606,16 @@
 .tray.picked .slot:not(.lift) { opacity: 0.26; filter: blur(1.4px) grayscale(0.4); }
 .card-go {
   position: absolute;
-  right: 19px; bottom: 15px;
-  font-size: 0.6rem;
+  right: 0; top: 0;
+  font-size: 0.55rem;
   letter-spacing: 0.14em;
   color: var(--accent-deep);
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--mid) var(--soft);
+  white-space: nowrap;
 }
-.slot.lift .card-go { opacity: 1; transition-delay: 240ms; }
+.slot.lift .card-go { opacity: 1; pointer-events: auto; transition-delay: 120ms; }
 .card-go span { display: inline-block; transition: transform var(--mid) var(--soft); }
 .slot.lift .card-go:hover span { transform: translateX(4px); }
 
@@ -702,51 +656,6 @@
 .tray.picked .cap { opacity: 0; }
 .cap-l { left: -16px; background: linear-gradient(90deg, var(--bg) 34%, transparent); }
 .cap-r { right: -16px; background: linear-gradient(270deg, var(--bg) 34%, transparent); }
-
-/* ── 索引条 ── */
-.indexbar { margin-top: 2.4rem; padding-top: 1.1rem; border-top: 1px solid var(--line); }
-.ticks { display: flex; align-items: flex-end; gap: 4px; height: 34px; }
-.tick {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-}
-.tick i {
-  display: block;
-  width: 100%;
-  height: var(--h);
-  border-radius: 1px;
-  background: var(--line);
-  transition: background var(--mid) var(--soft), height var(--mid) var(--spring);
-}
-.tick:hover i, .tick:focus-visible i { background: var(--accent); height: calc(var(--h) + 6px); }
-.tick.on i { background: var(--accent); }
-.tick.yr { border-left: 1px solid var(--line); padding-left: 5px; margin-left: 5px; }
-.tick.yr::after {
-  content: attr(data-y);
-  position: absolute;
-  left: 5px; top: -2px;
-  font-family: var(--mono);
-  font-size: 0.5rem;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-}
-.indexbar-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 0.8rem;
-  font-size: 0.58rem;
-  letter-spacing: 0.14em;
-}
 
 /* ═════════════════════════════════════════════════════════
    窄屏
@@ -792,6 +701,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .book, .divider, .slot, .wbar i { animation: none; }
-  .book, .slot, .slots, .card-body, .card-face, .spine, .cover, .tick i { transition: none; }
+  .book, .slot, .slots, .card-body, .card-face, .spine, .cover { transition: none; }
   .readpost.swap .rp-k, .readpost.swap h3, .readpost.swap .rp-s { animation: none; }
 }

@@ -1,0 +1,32 @@
+{{ define "main" }}
+{{/* ═══════════════════════════════════════════════════════
+     手册 —— 不是随笔，也不是笔记，所以不进书架也不进卡片箱。
+
+     它是一页图纸：出事那天多半在手机上打开，照着敲命令。因此没有
+     阅读进度条，没有上一篇下一篇，没有页边旁注 —— 那些是给「读」
+     准备的，而这一页是拿来「查」的。留下的只有目录，因为要跳。
+     ═══════════════════════════════════════════════════════ */}}
+
+{{ $css := resources.Get "css/handbook.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+
+<header class="hb-head">
+  {{/* 与 posts/single.html 同一支箭头、同一套判断 —— 手册是 note，回卡片箱 */}}
+  {{ $back := cond (eq (.Params.form | default "essay") "note") "卡片箱" "书架" }}
+  {{ $hash := cond (eq $back "卡片箱") "#roomBox" "#roomShelf" }}
+  <a class="to-shelf" href="{{ "/posts/" | relURL }}{{ $hash }}" aria-label="回到{{ $back }}">
+    <svg viewBox="0 0 42 24" aria-hidden="true">
+      <path d="M39 12 C27 13, 17 11, 7 12"/>
+      <path d="M15 5 C11 8, 7 11, 4 12 C7 13, 11 16, 15 19"/>
+    </svg>
+    {{ $back }}
+  </a>
+  {{ with .Params.kicker }}<div class="hb-kicker">{{ . }}</div>{{ end }}
+  <h1>{{ .Title }}</h1>
+  {{ with .Params.summary }}<p class="hb-sub">{{ . }}</p>{{ end }}
+</header>
+
+<article class="prose hb">
+  {{ .Content }}
+</article>
+{{ end }}

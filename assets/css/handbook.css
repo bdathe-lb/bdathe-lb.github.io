@@ -1,0 +1,165 @@
+/* ═══════════════════════════════════════════════════════════
+   手册 —— 给自己看的一页图纸
+
+   排版整个交给 main.css 的 .prose：正文是文楷，表格、代码块、
+   标题层级都已经调好了，这里不重复造。只补三样 .prose 没有的
+   东西 —— 一条分区色条、一块身份牌、一个警示框。
+
+   颜色一律取站点 token，不自带调色板。四个时段本来就都是亮色，
+   这一页跟着那 2% 的纸色漂移走即可；日后真收敛成一套配色，这里
+   一个字都不用改。
+
+   三个分区的语义色借自 :root 里那组代码高亮色 —— 它们本来就是
+   为这张纸调的，比另配一组更不容易打架：
+     ESP 紫 --c-key · 救援 绿 --c-str · 备份 青 --accent
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 身份牌 ───────────────────────────────────────────── */
+.hb-id {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin: 1.6rem 0 0;
+}
+.hb-id > div {
+  background: var(--bg);
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.hb-id dt {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hb-id dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+/* ── 分区色条 ─────────────────────────────────────────── */
+.hb-map { margin: 1.4rem 0 0; }
+.hb-bar {
+  display: flex;
+  height: 3.2rem;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.hb-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
+.hb-seg span {
+  padding: 0 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hb-seg.esp    { flex: 0 0 9%;   background: var(--c-key); }
+.hb-seg.rescue { flex: 0 0 19%;  background: var(--c-str); }
+.hb-seg.backup { flex: 1 1 auto; background: var(--accent); }
+
+.hb-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-top: none;
+}
+.hb-legend > div {
+  background: var(--bg);
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-top: 3px solid var(--sw);
+}
+.hb-legend .part {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--sw);
+}
+.hb-legend .size {
+  font-family: var(--mono);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.hb-legend .desc {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.hb-scale {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 0.5rem;
+}
+
+/* ── 警示框 ───────────────────────────────────────────── */
+.hb-note {
+  border-left: 3px solid var(--c-num);
+  background: color-mix(in srgb, var(--c-num) 5%, var(--bg));
+  padding: 0.8rem 1rem;
+  margin: 1.4rem 0;
+}
+.hb-note > strong {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-num);
+  margin-bottom: 0.3rem;
+}
+.hb-note p { margin: 0; font-size: 0.92rem; }
+
+/* ── 页首 ─────────────────────────────────────────────── */
+/* 与 .article-head 同一组留白，从卡片箱点进来时标题落点一致。
+   返回箭头 .to-shelf 的样式在 main.css 里，是无作用域的顶层类，
+   这里直接用，不复制一份 —— 那边改了这边跟着变 */
+.hb-head { padding: 4.5rem 0 2.5rem; }
+.hb-head .hb-kicker {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.hb-head h1 {
+  margin: 0.4rem 0 0.6rem;
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 4.5vw, 2.3rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.hb-head .hb-sub {
+  margin: 0;
+  max-width: var(--measure);
+  color: var(--muted);
+}
+
+@media print {
+  .hb-note { break-inside: avoid; }
+  .hb-legend > div { break-inside: avoid; }
+}

@@ -4,6 +4,5 @@
     <a href="{{ "/about/" | relURL }}">关于</a>
     {{ with .Site.Params.github }}<a href="{{ . }}" target="_blank" rel="noopener">GITHUB</a>{{ end }}
     {{ with .OutputFormats.Get "RSS" }}<a href="{{ .Permalink }}">RSS</a>{{ end }}
-    <span data-cmdk role="button" tabindex="0" style="cursor:pointer">⌘K 检索</span>
   </nav>
 </footer>

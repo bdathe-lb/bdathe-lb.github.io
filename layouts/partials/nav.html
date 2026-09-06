@@ -1,24 +1,6 @@
 <nav class="nav" aria-label="主导航">
   <div class="nav-in">
+    {{/* 入口都在页里的物件上，顶栏只留站名。文章页也一样，不再展栏目 / 随时间 / ⌘K。 */}}
     <a class="wordmark" href="{{ "/" | relURL }}">{{ .Site.Title }}<i>.</i></a>
-
-    {{/* 落地页和五个栏目索引 —— 入口在页里的物件上，顶栏只留站名。 */}}
-    {{- $quiet := or .IsHome (eq .Type "shelf") (eq .Type "verse") (eq .Type "vinyl") (eq .Type "album") (eq .Type "slides") }}
-    {{- if not $quiet }}
-    <div class="nav-links">
-      {{ $cur := .RelPermalink }}
-      {{ range .Site.Params.nav }}
-        {{ $url := .url | relURL }}
-        <a class="nav-link{{ if hasPrefix $cur $url }} on{{ end }}" href="{{ $url }}">{{ .name }}<small>{{ .latin }}</small></a>
-      {{ end }}
-    </div>
-
-    <button type="button" class="ambient" id="ambient" aria-pressed="true" title="背景是否跟随此刻的时间">
-      <span class="ambient-sky" aria-hidden="true"><i></i></span>
-      <span class="ambient-txt"><strong>随时间</strong><small id="ambientLabel">自动</small></span>
-    </button>
-
-    <button type="button" class="cmdk-hint" data-cmdk aria-label="检索全站">⌘K</button>
-    {{- end }}
   </div>
 </nav>
