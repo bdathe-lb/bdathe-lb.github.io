@@ -1,4 +1,4 @@
-# 音 — 一首一条。
+# 音 — 一首一条
 #
 #   title / artist / album / genre / date   基本信息
 #   summary                                 列表上那一行短句
@@ -16,6 +16,15 @@
 #     第一段。可以写当时在做什么、为什么记住它。
 #
 #     第二段。**粗体**、*斜体*、[链接](https://…) 都可以用。
+
+- title: "我的爱"
+  date: 2026-09-08
+  artist: "孙燕姿 (Stefanie Sun)"
+  album: "《完美的一天》"
+  genre: "流行"
+  spotify: "https://open.spotify.com/track/1bhXYLkHLt6ucYSCwzue3k?si=d0b5fd034f5f4fd7"
+  qqmusic: "https://i.y.qq.com/v8/playsong.html?songid=5188#webchat_redirect"
+  summary: "Softly and slowly, I tell the story of my love."
 
 - title: "Listening For The Weather"
   date: 2026-05-02
