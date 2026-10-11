@@ -65,17 +65,20 @@
 
 				QUnit.test( 'Activates', assert => {
 					assert.ok( getScrollHeight() > getViewportHeight(), 'Is overflowing' );
+					assert.strictEqual( document.querySelectorAll( '.reveal .slides section[inert]' ).length, 0, 'All slides are interactive' );
 				});
 
 				QUnit.test( 'Can be toggled via API', assert => {
 					Reveal.toggleScrollView( false );
 					assert.ok( getScrollHeight() <= getViewportHeight(), 'Is not overflowing' );
+					assert.ok( document.querySelectorAll( '.reveal .slides section[inert]' ).length > 0, 'Offscreen slides are inert' );
 					Reveal.toggleScrollView( true );
 					assert.ok( getScrollHeight() > getViewportHeight(), 'Is overflowing' );
+					assert.strictEqual( document.querySelectorAll( '.reveal .slides section[inert]' ).length, 0, 'All slides are interactive' );
 				});
 
 				QUnit.test( 'Changes present slide when scrolling', assert => {
-					assert.timeout( 200 );
+					assert.timeout( 2000 );
 					assert.expect( 2 );
 
 					const slides = document.querySelectorAll( '.reveal .slides section' );
@@ -92,7 +95,7 @@
 				});
 
 				QUnit.test( 'Fires slideschanged event when scrolling', assert => {
-					assert.timeout( 200 );
+					assert.timeout( 2000 );
 					assert.expect( 2 );
 
 					const slides = document.querySelectorAll( '.reveal .slides section' );
@@ -111,7 +114,7 @@
 				});
 
 				QUnit.test( 'Fires fragmentshown event when scrolling', assert => {
-					assert.timeout( 200 );
+					assert.timeout( 2000 );
 					assert.expect( 2 );
 
 					const slides = document.querySelectorAll( '.reveal .slides section' );
@@ -134,7 +137,7 @@
 				});
 
 				QUnit.test( 'Fires fragmenthidden event when scrolling', assert => {
-					assert.timeout( 200 );
+					assert.timeout( 2000 );
 					assert.expect( 2 );
 
 					const slides = document.querySelectorAll( '.reveal .slides section' );

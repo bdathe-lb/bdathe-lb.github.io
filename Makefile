@@ -6,7 +6,7 @@
 #   make serve         Hugo live-reload server
 #   make build         Full production build (slides + Hugo)
 #   make site          Hugo only
-#   make slides        Copy allowlisted decks from ~/reports into static/
+#   make slides        Copy allowlisted decks from ~/projects/reports into static/
 #   make clean         Remove public/ and Hugo cache
 #
 # Overrides:  make serve PORT=1314
@@ -14,7 +14,8 @@
 # ---------------------------------------------------------------------------
 
 # --- paths -----------------------------------------------------------------
-REPORTS_DIR       ?= $(HOME)/reports
+REPORTS_DIR       ?= $(HOME)/projects/reports
+export REPORTS_DIR
 SLIDES_SRC        ?= $(REPORTS_DIR)/site
 SLIDES_DST        ?= static/slides/site
 SLIDES_SITE_INDEX ?= assets/slides/site-index.html
@@ -47,8 +48,8 @@ help:
 	  '  Build' \
 	  '    make build          Full production build (slides → sync → Hugo)' \
 	  '    make site           Hugo only  (--gc --minify → public/)' \
-	  '    make slides         Copy public decks (data/slides.yaml) from ~/reports' \
-	  '    make build-slides   Rebuild all of ~/reports (workshop, optional)' \
+	  '    make slides         Copy public decks (data/slides.yaml) from $(REPORTS_DIR)' \
+	  '    make build-slides   Rebuild all of $(REPORTS_DIR) (workshop, optional)' \
 	  '    make sync-slides    Same as make slides' \
 	  '    make covers         Fetch covers + iTunes previews for data/music.yaml' \
 	  '' \
@@ -90,13 +91,13 @@ build: slides site
 site:
 	$(HUGO) --gc --minify --cacheDir $(HUGO_CACHE) --cleanDestinationDir
 
-## Copy allowlisted decks from ~/reports into static/. Does not rebuild the
+## Copy allowlisted decks from $(REPORTS_DIR) into static/. Does not rebuild the
 ## whole workshop — only data/slides.yaml is public. Run make build-slides
 ## first if reports/site is stale.
 slides: sync-slides
 	@echo "✓ slides → $(SLIDES_DST)"
 
-## Rebuild every deck in ~/reports. Optional; the wiki no longer needs it
+## Rebuild every deck in $(REPORTS_DIR). Optional; the wiki no longer needs it
 ## unless a public deck's source changed.
 build-slides:
 	$(MAKE) -C $(REPORTS_DIR) build

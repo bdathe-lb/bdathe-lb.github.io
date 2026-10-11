@@ -370,12 +370,14 @@ const Plugin = () => {
 		}
 
 		if ( element.nodeType === Node.COMMENT_NODE ) {
-		let targetElement = previousElement;
-		if( targetElement && ( targetElement.tagName === 'UL' || targetElement.tagName === 'OL' ) ) {
-			targetElement = targetElement.lastElementChild || targetElement;
-		}
+			let targetElement = previousElement;
+			// A blank line targets the list; an adjacent comment targets its last item.
+			const afterBlankLine = /\n[ \t]*\n/.test( element.previousSibling?.nodeValue || '' );
+			if( targetElement && ( targetElement.tagName === 'UL' || targetElement.tagName === 'OL' ) && !afterBlankLine ) {
+				targetElement = targetElement.lastElementChild || targetElement;
+			}
 
-		if ( addAttributeInElement( element, targetElement, separatorElementAttributes ) === false ) {
+			if ( addAttributeInElement( element, targetElement, separatorElementAttributes ) === false ) {
 				addAttributeInElement( element, section, separatorSectionAttributes );
 			}
 		}
@@ -464,7 +466,9 @@ const Plugin = () => {
 				};
 			}
 
-			markedInstance = new Marked();
+			// Preserve Markdown blank lines so list attribute comments can distinguish
+			// the whole list from its last item. Marked normally discards these tokens.
+			markedInstance = new Marked( { renderer: { space: ( { raw } ) => raw } } );
 			markedInstance.use( { renderer, ...markedOptions } );
 			if( smartypants ) {
 				markedInstance.use( markedSmartypants() );

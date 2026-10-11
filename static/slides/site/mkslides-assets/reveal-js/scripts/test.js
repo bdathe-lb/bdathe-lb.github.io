@@ -55,6 +55,14 @@ const runTests = async (baseUrl) => {
 							result.stats.runtime
 						}ms`.red
 					);
+					// QUnit timeout failures may omit source, but the reporter calls source.trim().
+					for (const module of Object.values(result.modules)) {
+						for (const test of module.tests) {
+							for (const log of test.log || []) {
+								log.source ??= '';
+							}
+						}
+					}
 					printFailedTests(result, console);
 				} else {
 					console.log(

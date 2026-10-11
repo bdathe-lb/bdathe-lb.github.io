@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Copy allowlisted decks from ~/reports into static/slides/site.
+"""Copy allowlisted decks from the reports workshop into static/slides/site.
 
-The workshop is ~/reports; this repo is the vitrine. data/slides.yaml is the
+The workshop is ~/projects/reports (override with $REPORTS_DIR); this repo is the vitrine. data/slides.yaml is the
 shelf — only those html files (and their dated image/video folders) are
 copied. mkslides-assets / theme / icons are rsynced incrementally and never
 deleted from this side. reports' mkslides.yml is left alone so its private
@@ -13,6 +13,7 @@ Safe to re-run. Unpublished decks already in static/slides/site/slides/ are
 removed.
 """
 
+import os
 import shutil
 import subprocess
 import sys
@@ -21,11 +22,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "data" / "slides.yaml"
 DST = ROOT / "static" / "slides" / "site"
-REPORTS = Path.home() / "reports"
+REPORTS = Path(os.environ.get("REPORTS_DIR") or Path.home() / "projects" / "reports").expanduser()
 SRC = REPORTS / "site"
 INDEX = ROOT / "assets" / "slides" / "site-index.html"
 
-VENDOR = ("mkslides-assets", "theme", "assets")
+# "theme" is the pre-2026-10 layout; reports now builds themes/ (CSS + base)
+# and assets/ (fonts, KaTeX). Missing ones are skipped.
+VENDOR = ("mkslides-assets", "theme", "themes", "assets")
+MEDIA = ("images", "vedios", "videos", "webs")
 
 
 def yaml_scalar(line):
@@ -66,7 +70,7 @@ def copy_deck(src_root, dst_root, deck):
 
     stem = deck["date"] or rel.stem.replace("_meeting", "")
     parent = rel.parent
-    for kind in ("images", "vedios", "videos"):
+    for kind in MEDIA:
         folder = src_root / parent / kind / stem
         if folder.is_dir():
             out = dst_root / parent / kind / stem
@@ -86,7 +90,7 @@ def prune(dst_root, decks):
         if rel not in keep_html:
             html.unlink()
             print(f"  − {rel}")
-    for kind in ("images", "vedios", "videos"):
+    for kind in MEDIA:
         for folder in slides.glob(f"*/{kind}/*"):
             if folder.is_dir() and folder.name not in keep_dates:
                 shutil.rmtree(folder)
@@ -108,7 +112,7 @@ def main():
     if not decks:
         sys.exit("error: data/slides.yaml is empty")
     if not SRC.is_dir():
-        sys.exit(f"error: missing {SRC} — build reports first: make -C ~/reports build")
+        sys.exit(f"error: missing {SRC} — build reports first: make -C {REPORTS} build")
 
     DST.mkdir(parents=True, exist_ok=True)
     slides_src = SRC / "slides"

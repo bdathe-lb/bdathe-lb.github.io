@@ -1,8 +1,14 @@
-# 橱窗里的讲稿。工房在 ~/reports，这里只列要公开的。
+# 橱窗里的讲稿。工房在 ~/projects/reports，这里只列要公开的。
 #
 #   group   货架名（讲页上那一行）
 #   date    封面日期
-#   file    编好的 html，相对 ~/reports/site/slides/
+#   file    编好的 html，相对 ~/projects/reports/site/slides/
+#   title   封面标题（可选；缺省取讲稿里的第一个 # 标题）
+
+- group: meetings
+  date: "2026-10-12"
+  file: meetings/2026-10-12_meeting.html
+  title: "2026 秋季第一次集体组会"
 
 - group: meetings
   date: "2025-10-11"

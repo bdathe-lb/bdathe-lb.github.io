@@ -1,0 +1,624 @@
+/*
+ * 学术蓝 Academic — 默认主题
+ *
+ * 白底、蓝色标题、带浅色底的提示框、"编辑式溶解"翻页动效。
+ * 结构规则来自 ../_base/base.css，这里只写设计：颜色、字体、标题
+ * 与封面版式、提示框外观、动效个性。
+ *
+ * 版式约定（与 Markdown 结构对应）：
+ *   #   封面：居中大标题 + 细线 + 署名
+ *   ##  章节页：居中标题，偏上
+ *   ### 内容页标题 + 整宽细线
+ */
+
+@import url("../_base/base.css");
+
+:root {
+    --page: #ffffff;
+    --bg: #ffffff;
+    --text: #252a31;
+    --text-muted: #667085;
+    --text-soft: #8a94a6;
+    --accent: #006fb8;
+    --accent-soft: #e7f1fa;
+    --accent-mid: #9fc9e8;
+    --link: #2a76dd;
+    --link-hover: #6ca0e8;
+    --line: #d9e0e7;
+    --line-strong: #aeb8c4;
+    --frame: #9aa8bb;
+    --surface: #f6f8fa;
+    --code-bg: #f6f8fa;
+    --warning: #b54708;
+    --warning-bg: #fff4e5;
+    --success: #13795b;
+    --success-bg: #e9f7f1;
+    --danger: #b42318;
+    --danger-bg: #fff0ef;
+    --selection: #9fc9e8;
+    --shadow-soft: 0 8px 24px rgba(16, 24, 40, 0.08);
+
+    --font-body: "Lato", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-heading: var(--font-body);
+    --base-size: 28px;
+
+    --pad-top: 0.85rem;
+    --pad-right: 2.3rem;
+    --pad-bottom: 0.85rem;
+    --pad-left: 1.7rem;
+
+    /*
+     * Motion system (editorial dissolve + content enter)
+     * --ease-out-expo: 快进慢出，翻页落定感
+     * --ease-out-soft: 内容入场稍柔和
+     */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-out-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-out-soft: cubic-bezier(0.33, 1, 0.68, 1);
+    --ease: var(--ease-out-soft);
+
+    --slide-duration: 0.48s;
+    --content-duration: 0.5s;
+    --fragment-duration: 0.34s;
+    --progress-duration: 0.55s;
+
+    /* 进出位移 / 缩放：克制，组会场景不抢内容 */
+    --exit-y: -0.55rem;
+    --enter-y: 0.7rem;
+    --exit-scale: 0.985;
+    --enter-scale: 0.972;
+}
+
+section.has-dark-background,
+section.has-dark-background h1,
+section.has-dark-background h2,
+section.has-dark-background h3,
+section.has-dark-background h4 {
+    color: #ffffff;
+}
+
+/*********************************************
+ * SLIDE FRAME
+ *********************************************/
+.reveal .slides {
+    border: 1px solid var(--frame);
+    border-radius: 6px;
+    box-shadow: 0 3px 12px rgba(16, 24, 40, 0.12);
+}
+
+.reveal .slides section,
+.reveal .slides section > section {
+    line-height: 1.32;
+}
+
+/*********************************************
+ * HEADERS
+ *********************************************/
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+    margin: 0 0 20px 0;
+    color: var(--accent);
+    font-weight: 800;
+    line-height: 1.18;
+    letter-spacing: 0;
+}
+
+.reveal h1 {
+    font-size: 2.18em;
+}
+
+.reveal h2 {
+    font-size: 1.62em;
+}
+
+.reveal h3 {
+    font-size: 1.28em;
+}
+
+.reveal h4 {
+    font-size: 1em;
+    color: var(--text);
+}
+
+/* 封面：# 标题，整体居中 */
+.reveal .slides section:has(> h1) {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.reveal .slides section:has(> h1) h1 {
+    max-width: 88%;
+    margin: 0 0 0.45em;
+    line-height: 1.12;
+}
+
+.reveal .slides section:has(> h1) p {
+    margin: 0.25em 0 0;
+    font-size: 0.8em;
+    color: var(--text);
+    line-height: 1.35;
+}
+
+.reveal .slides section:has(> h1) hr {
+    width: 82%;
+    margin: 0.45rem 0 0.7rem;
+}
+
+/* 章节页：## 标题，居中偏上 */
+.reveal .slides section:has(> h2) {
+    --pad-top: 19rem;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: center;
+}
+
+/* 内容页：### 标题 + 整宽细线 */
+.reveal .slides section h3 {
+    padding-top: 0.5rem;
+}
+
+.reveal .slides section h3::after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 1px;
+    margin: 0.55em 0 0.8em;
+    background: var(--line-strong);
+}
+
+.reveal hr {
+    width: 100%;
+    height: 1px;
+    margin: 1rem 0;
+    border: 0;
+    background: var(--line-strong);
+}
+
+/*********************************************
+ * BODY CONTENT
+ *********************************************/
+.reveal p {
+    margin: 18px 0;
+    line-height: 1.45;
+}
+
+.reveal strong,
+.reveal b {
+    font-weight: 800;
+}
+
+.reveal em {
+    font-style: italic;
+}
+
+.reveal li {
+    margin-bottom: 0.28em;
+}
+
+.reveal ol,
+.reveal dl,
+.reveal ul {
+    margin: 0.2em 0 0 1em;
+    padding-right: 0.35rem;
+}
+
+.reveal ol {
+    list-style-type: decimal;
+}
+
+.reveal ul {
+    list-style-type: disc;
+}
+
+.reveal ul ul {
+    list-style-type: square;
+}
+
+.reveal ul ul ul {
+    list-style-type: circle;
+}
+
+.reveal ul ul,
+.reveal ul ol,
+.reveal ol ol,
+.reveal ol ul {
+    margin-left: 36px;
+}
+
+.reveal dt {
+    font-weight: 800;
+}
+
+.reveal dd {
+    margin-left: 40px;
+}
+
+.reveal blockquote {
+    display: block;
+    position: relative;
+    width: auto;
+    margin: 22px 0;
+    padding: 0.45rem 0 0.45rem 1.15rem;
+    color: var(--text);
+    background: transparent;
+    border-left: 0.18rem solid var(--line-strong);
+    box-shadow: none;
+    font-size: 0.92em;
+}
+
+.reveal blockquote p:first-child,
+.reveal blockquote p:last-child {
+    display: inline-block;
+}
+
+.reveal q {
+    font-style: italic;
+}
+
+/*********************************************
+ * CODE
+ *********************************************/
+.reveal pre {
+    margin: 20px 0;
+    font-size: 0.75em;
+    line-height: 1.25em;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background-color: var(--code-bg);
+    box-shadow: none;
+}
+
+.reveal code {
+    color: var(--accent);
+}
+
+.reveal pre code {
+    padding: 0.75rem 0.9rem;
+    max-height: 400px;
+    color: inherit;
+}
+
+.reveal .math-block {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
+
+/*********************************************
+ * TABLES
+ *********************************************/
+.reveal table th {
+    font-weight: 800;
+    color: var(--text);
+}
+
+.reveal table th,
+.reveal table td {
+    border-bottom: 1px solid var(--line);
+}
+
+.reveal table tbody tr:last-child th,
+.reveal table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/*********************************************
+ * LINKS AND MEDIA
+ *********************************************/
+.reveal a {
+    color: var(--link);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.reveal a:hover {
+    color: var(--link-hover);
+    text-shadow: none;
+    border: none;
+}
+
+.reveal section img {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+}
+
+.reveal section img.plain,
+.reveal .figure-plain img {
+    border: 0;
+    box-shadow: none;
+}
+
+.reveal a img {
+    transition: all 0.2s ease;
+}
+
+.reveal a:hover img {
+    border-color: var(--link);
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.14);
+    transform: scale(1.02);
+}
+
+/*********************************************
+ * CALLOUTS
+ *********************************************/
+.reveal .takeaway,
+.reveal .definition,
+.reveal .theorem,
+.reveal .proof,
+.reveal .result,
+.reveal .warning,
+.reveal .danger,
+.reveal .note {
+    border-left: 0.22rem solid var(--accent);
+    background: var(--accent-soft);
+}
+
+.reveal .takeaway {
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.reveal .definition,
+.reveal .theorem,
+.reveal .proof,
+.reveal .note {
+    background: var(--surface);
+    border-left-color: var(--line-strong);
+}
+
+.reveal .theorem {
+    border-left-color: var(--accent);
+}
+
+.reveal .result {
+    background: var(--success-bg);
+    border-left-color: var(--success);
+}
+
+.reveal .warning {
+    background: var(--warning-bg);
+    border-left-color: var(--warning);
+}
+
+.reveal .danger {
+    background: var(--danger-bg);
+    border-left-color: var(--danger);
+}
+
+/*********************************************
+ * NAVIGATION CONTROLS
+ *********************************************/
+.reveal .controls {
+    color: var(--link);
+    opacity: 0.72;
+}
+
+.reveal .controls:hover {
+    opacity: 1;
+}
+
+.reveal .progress {
+    background: rgba(0, 0, 0, 0.14);
+    color: var(--link);
+}
+
+.reveal .progress span {
+    transition: transform var(--progress-duration) var(--ease-out-expo);
+}
+
+.reveal .slide-number {
+    color: var(--link);
+    background: rgba(255, 255, 255, 0.72);
+    border-radius: 3px;
+}
+
+/*********************************************
+ * MOTION SYSTEM — editorial dissolve
+ *
+ * 纯 opacity fade 容易「糊一下就换页」。这里叠加：
+ * 1) 页间：透明度 + 轻微缩放 + 方向性位移（past 上抬 / future 上浮）
+ * 2) 页内：进入 .present 后，子元素错落入场
+ * 3) fragment：同样用缓出曲线（见 base）
+ *********************************************/
+.reveal .slides > section,
+.reveal .slides > section > section {
+    transition:
+        transform-origin var(--slide-duration) var(--ease-out-expo),
+        transform var(--slide-duration) var(--ease-out-expo),
+        visibility var(--slide-duration) var(--ease-out-expo),
+        opacity var(--slide-duration) var(--ease-out-expo);
+    will-change: transform, opacity;
+}
+
+/*
+ * Override Reveal's stock fade (opacity-only, transform:none).
+ * Past exits slightly up+shrink; future enters from slightly below+shrink.
+ */
+.reveal .slides section[data-transition="fade"],
+.reveal.fade .slides section:not([data-transition]),
+.reveal.fade .slides > section > section:not([data-transition]) {
+    transition:
+        opacity var(--slide-duration) var(--ease-out-expo),
+        transform var(--slide-duration) var(--ease-out-expo),
+        visibility var(--slide-duration) var(--ease-out-expo) !important;
+}
+
+.reveal.fade .slides > section.past,
+.reveal.fade .slides > section > section.past,
+.reveal .slides section[data-transition="fade"].past {
+    opacity: 0;
+    transform: translateY(var(--exit-y)) scale(var(--exit-scale));
+}
+
+.reveal.fade .slides > section.future,
+.reveal.fade .slides > section > section.future,
+.reveal .slides section[data-transition="fade"].future {
+    opacity: 0;
+    transform: translateY(var(--enter-y)) scale(var(--enter-scale));
+}
+
+.reveal.fade .slides > section.present,
+.reveal.fade .slides > section > section.present,
+.reveal .slides section[data-transition="fade"].present {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Vertical stacks: stronger Y travel, less scale (reads as "down" not "zoom") */
+.reveal.fade .slides > section > section.past {
+    transform: translateY(calc(var(--exit-y) * 2.2)) scale(0.99);
+}
+
+.reveal.fade .slides > section > section.future {
+    transform: translateY(calc(var(--enter-y) * 2.4)) scale(0.99);
+}
+
+/* Speed presets keep the curve */
+.reveal[data-transition-speed="fast"] .slides section {
+    transition-duration: 0.32s;
+    transition-timing-function: var(--ease-out-expo);
+}
+
+.reveal[data-transition-speed="slow"] .slides section {
+    transition-duration: 0.85s;
+    transition-timing-function: var(--ease-out-expo);
+}
+
+.reveal .slide-background {
+    transition:
+        opacity var(--slide-duration) var(--ease-out-expo),
+        transform var(--slide-duration) var(--ease-out-expo),
+        visibility var(--slide-duration) var(--ease-out-expo);
+}
+
+.reveal[data-transition-speed="fast"] > .backgrounds .slide-background {
+    transition-duration: 0.32s;
+    transition-timing-function: var(--ease-out-expo);
+}
+
+.reveal[data-transition-speed="slow"] > .backgrounds .slide-background {
+    transition-duration: 0.85s;
+    transition-timing-function: var(--ease-out-expo);
+}
+
+/* ---------- Content enter: only when a slide becomes present ---------- */
+@keyframes r-content-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.55rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/*
+ * Direct children of the active section (not fragments — those have their own motion).
+ * Stagger gives a light editorial rhythm without looking like a marketing site.
+ */
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):not(br):not(hr) {
+    animation: r-content-enter var(--content-duration) var(--ease-out-soft) both;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(1) {
+    animation-delay: 0.02s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(2) {
+    animation-delay: 0.07s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(3) {
+    animation-delay: 0.12s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(4) {
+    animation-delay: 0.16s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(5) {
+    animation-delay: 0.2s;
+}
+
+.reveal:not(.overview) .slides section.present > :not(.fragment):not(section):nth-child(n + 6) {
+    animation-delay: 0.24s;
+}
+
+/* Nested list items: gentle cascade after parent appears */
+.reveal:not(.overview) .slides section.present > ul > li,
+.reveal:not(.overview) .slides section.present > ol > li {
+    animation: r-content-enter calc(var(--content-duration) * 0.9) var(--ease-out-soft) both;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(1),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(2),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(3),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(4),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(4) {
+    animation-delay: 0.24s;
+}
+
+.reveal:not(.overview) .slides section.present > ul > li:nth-child(n + 5),
+.reveal:not(.overview) .slides section.present > ol > li:nth-child(n + 5) {
+    animation-delay: 0.28s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal.fade .slides > section.past,
+    .reveal.fade .slides > section.future,
+    .reveal.fade .slides > section > section.past,
+    .reveal.fade .slides > section > section.future {
+        transform: none;
+    }
+}
+
+/*
+ * ---- Alternative presets (manual) ----
+ *
+ * A) Push (directional, more "deck-like")
+ *    In mkslides.yml: transition: slide
+ *    Then uncomment:
+ *
+ * .reveal.slide .slides > section.past {
+ *     transform: translateX(-22%) scale(0.97);
+ *     opacity: 0;
+ * }
+ * .reveal.slide .slides > section.future {
+ *     transform: translateX(22%) scale(0.97);
+ *     opacity: 0;
+ * }
+ *
+ * B) Minimal (only opacity, no content enter)
+ *    Set --enter-y/exit-y to 0, --enter-scale/--exit-scale to 1,
+ *    and comment out the "Content enter" block above.
+ *
+ * C) Per-slide override in Markdown:
+ *    <!-- .slide: data-transition="slide" data-transition-speed="fast" -->
+ *    <!-- .element: class="fragment fade-up" -->
+ */
+
+@media print {
+    body {
+        font-family: sans-serif;
+    }
+}

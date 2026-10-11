@@ -320,6 +320,42 @@
 
 			QUnit.config.testTimeout = 30000;
 
+			QUnit.test( 'List attributes distinguish blank lines from adjacent item comments', async function( assert ) {
+				for( const [marker, tag] of [['-', 'ul'], ['1.', 'ol']] ) {
+					for( const [suffix, target] of [
+						['\n\n<!-- .element class="list-test" -->', tag],
+						['\n<!-- .element class="list-test" -->', 'li:last-child'],
+						[' <!-- .element class="list-test" -->', 'li:last-child'],
+						['\n   <!-- .element class="list-test" -->', 'li:last-child']
+					] ) {
+						const root = document.createElement( 'div' );
+						root.innerHTML = '<section data-markdown><script type="text/template"></' + 'script></section>';
+						root.querySelector( 'script' ).textContent = `${marker} HTML\n${marker} CSS${suffix}`;
+						await Markdown().init( { getConfig: () => ({}), getRevealElement: () => root } );
+						assert.strictEqual( root.querySelector( '.list-test' ), root.querySelector( target ), `${tag}: ${JSON.stringify( suffix )}` );
+						assert.strictEqual( root.querySelectorAll( '.list-test' ).length, 1, 'only the intended element receives attributes' );
+					}
+				}
+			} );
+
+			QUnit.test( 'List comments preserve loose lists, nested lists and custom renderers', async function( assert ) {
+				for( const [markdown, config] of [
+					['- HTML\n\n- CSS', {}],
+					['- HTML\n  - CSS', {}],
+					['- HTML\n- CSS', { renderer: { listitem: token => `<li>${token.text}</li>` } }]
+				] ) {
+					for( const blankLine of [false, true] ) {
+						const root = document.createElement( 'div' );
+						root.innerHTML = '<section data-markdown><script type="text/template"></' + 'script></section>';
+						root.querySelector( 'script' ).textContent = markdown + ( blankLine ? '\n\n' : '\n' ) + '<!-- .element class="list-test" -->';
+						await Markdown().init( { getConfig: () => ({ markdown: config }), getRevealElement: () => root } );
+						const list = root.querySelector( 'ul' );
+						assert.strictEqual( root.querySelector( '.list-test' ), blankLine ? list : list.lastElementChild, `${markdown}: blank line ${blankLine}` );
+						assert.strictEqual( list.nextSibling.nextSibling.nodeType, Node.COMMENT_NODE, 'comment remains outside the list' );
+					}
+				}
+			} );
+
 			let deck1 = new Reveal( document.querySelector( '.deck1' ), { plugins: [ Markdown ] })
 			deck1.addEventListener( 'ready', function() {
 

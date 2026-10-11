@@ -1,6 +1,6 @@
 {{ define "main" }}
 {{/* 货架是 data/slides.yaml。封面仍从编好的 html 里读 H1 / 大纲 / 页数 ——
-     工房在 ~/reports，这里只展示清单上的那几份。 */}}
+     工房在 ~/projects/reports，这里只展示清单上的那几份。 */}}
 
 {{ $groups := slice }}
 {{ $gname := "" }}
@@ -32,6 +32,7 @@
       {{ $slides = add 1 (len (findRE `(?m)^\s*(---|-v-)\s*$` .)) }}
     {{ end }}
   {{ end }}
+  {{ with $d.title }}{{ $title = . }}{{ end }}
   {{ $items = $items | append (dict
       "label" $d.date
       "title" $title

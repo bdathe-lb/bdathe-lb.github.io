@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Put a "back to 讲" control on every generated deck.
 
-The decks are copied from ~/reports by scripts/sync-slides.py according to
+The decks are copied from ~/projects/reports by scripts/sync-slides.py according to
 data/slides.yaml. There is no Hugo template to hang this off — the only
 place that belongs to this repo is right after the copy. Run it from the
 Makefile's sync-slides target (and it is safe to run over an already-injected

@@ -1,0 +1,648 @@
+/*
+ * themes/_base/base.css — shared structure for every slide theme.
+ *
+ * This is NOT a theme. Each theme starts with
+ *     @import url("../_base/base.css");
+ * then defines its tokens and its own design on top.
+ *
+ * What lives here is design-neutral: fonts registration, the slide box,
+ * layout utilities (two-col, figures, media), the box model of callouts,
+ * fragment behaviour, reduced-motion and print rules. Colours, type,
+ * rules, cover/section layouts and motion personality belong to themes.
+ *
+ * Tokens a theme is expected to set (fallbacks below keep base usable):
+ *   colours   --bg --page --text --text-muted --text-soft --accent
+ *             --accent-soft --line --line-strong --surface --code-bg
+ *             --warning --warning-bg --success --success-bg
+ *             --danger --danger-bg --selection
+ *   type      --font-body --font-heading --font-mono --base-size
+ *   spacing   --pad-top --pad-x --pad-bottom (--pad-left/--pad-right override --pad-x)
+ *   media     --fig-max-h --embed-h
+ *   motion    --ease --slide-duration --fragment-duration
+ */
+
+@import url("../../assets/fonts/fonts.css");
+
+:root {
+    --bg: #ffffff;
+    --page: #f4f6f8;
+    --text: #20242a;
+    --text-muted: #68707c;
+    --text-soft: #8a94a6;
+    --accent: #175fa3;
+    --accent-soft: #e7f1fa;
+    --line: #dce1e7;
+    --line-strong: #b8c1cc;
+    --surface: #f6f8fa;
+    --code-bg: #f6f8fa;
+    --warning: #b54708;
+    --warning-bg: #fff4e5;
+    --success: #13795b;
+    --success-bg: #e9f7f1;
+    --danger: #b42318;
+    --danger-bg: #fff0ef;
+    --selection: #9fc9e8;
+
+    --font-body: "Lato", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-heading: var(--font-body);
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Noto Sans SC", monospace;
+    --base-size: 28px;
+
+    --pad-top: 0.85rem;
+    --pad-x: 2.3rem;
+    --pad-bottom: 0.85rem;
+
+    /* Slide canvas is 960x720 (see mkslides.yml); px here are canvas px. */
+    --fig-max-h: 430px;
+    --embed-h: 480px;
+
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --slide-duration: 0.45s;
+    --fragment-duration: 0.35s;
+}
+
+/*********************************************
+ * SLIDE BOX
+ *********************************************/
+body {
+    background: var(--page);
+}
+
+.reveal {
+    font-family: var(--font-body);
+    font-size: var(--base-size);
+    font-weight: 400;
+    color: var(--text);
+}
+
+.reveal ::selection {
+    color: var(--bg);
+    background: var(--selection);
+    text-shadow: none;
+}
+
+.reveal .slides {
+    box-sizing: border-box;
+    background: var(--bg);
+    overflow: hidden;
+}
+
+/*
+ * Descendant selectors on purpose: in PDF export Reveal wraps every slide in
+ * a .pdf-page div, so `.slides > section` would stop matching there.
+ * Themes change the padding of a page type by overriding the tokens on it
+ * (e.g. `section:has(> h1) { --pad-right: 120px }`), never `padding` itself,
+ * so the print rule below keeps working.
+ */
+.reveal .slides section {
+    box-sizing: border-box;
+    padding: var(--pad-top) var(--pad-right, var(--pad-x)) var(--pad-bottom) var(--pad-left, var(--pad-x));
+    line-height: 1.35;
+    font-weight: inherit;
+    text-align: left;
+}
+
+/* Vertical stacks are only containers. */
+.reveal .slides section.stack {
+    padding: 0;
+}
+
+/* Reveal's print stylesheet zeroes padding with !important; put it back. */
+html.reveal-print .reveal .slides section {
+    padding: var(--pad-top) var(--pad-right, var(--pad-x)) var(--pad-bottom) var(--pad-left, var(--pad-x)) !important;
+}
+
+html.reveal-print .reveal .slides section.stack {
+    padding: 0 !important;
+}
+
+/*
+ * Cover (#) and section (##) pages fill the slide and lay out with flex so a
+ * theme only has to say where the title sits. The [style] guard keeps hidden
+ * slides hidden (Reveal toggles display inline).
+ */
+.reveal .slides section:has(> h1):not([style*="display: none"]),
+.reveal .slides section:has(> h2):not([style*="display: none"]) {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+    height: 100% !important;
+    min-height: 100%;
+}
+
+/* On screen the slide sits at the top of its stack; in print Reveal positions it. */
+html:not(.reveal-print) .reveal .slides section:has(> h1),
+html:not(.reveal-print) .reveal .slides section:has(> h2) {
+    top: 0 !important;
+}
+
+html.reveal-print .reveal .slides section:has(> h1),
+html.reveal-print .reveal .slides section:has(> h2) {
+    height: var(--slide-height, 720px) !important;
+    min-height: 0;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+    font-family: var(--font-heading);
+    text-shadow: none;
+    overflow-wrap: break-word;
+}
+
+/*********************************************
+ * TEXT STRUCTURE
+ *********************************************/
+.reveal p {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.reveal ol,
+.reveal ul,
+.reveal dl {
+    display: block;
+    max-width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.reveal ul ul,
+.reveal ul ol,
+.reveal ol ol,
+.reveal ol ul {
+    display: block;
+}
+
+.reveal sup {
+    vertical-align: super;
+    font-size: smaller;
+}
+
+.reveal sub {
+    vertical-align: sub;
+    font-size: smaller;
+}
+
+.reveal small {
+    display: inline-block;
+    font-size: 0.6em;
+    line-height: 1.25em;
+    vertical-align: top;
+    color: var(--text-muted);
+}
+
+.reveal small * {
+    vertical-align: top;
+}
+
+/*********************************************
+ * CODE
+ *********************************************/
+.reveal code {
+    font-family: var(--font-mono);
+    text-transform: none;
+}
+
+.reveal pre {
+    display: block;
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.72em;
+    line-height: 1.3em;
+    overflow-wrap: break-word;
+    font-feature-settings: "calt" 1;
+}
+
+.reveal pre code {
+    display: block;
+    overflow: auto;
+    max-height: 420px;
+    word-wrap: normal;
+}
+
+.reveal .code-small pre,
+.reveal pre.code-small {
+    font-size: 0.6em;
+}
+
+/*********************************************
+ * TABLES
+ *********************************************/
+.reveal table {
+    margin: 0.5em auto;
+    border-collapse: collapse;
+    border-spacing: 0;
+    font-size: 0.84em;
+}
+
+.reveal table th,
+.reveal table td {
+    text-align: left;
+    padding: 0.35em 0.65em;
+}
+
+.reveal table th[align="center"],
+.reveal table td[align="center"] {
+    text-align: center;
+}
+
+.reveal table th[align="right"],
+.reveal table td[align="right"] {
+    text-align: right;
+}
+
+/*********************************************
+ * MATH (KaTeX)
+ *********************************************/
+.reveal .katex {
+    font-size: 1.04em;
+}
+
+.reveal .katex-display {
+    margin: 0.55em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.reveal .math-block {
+    margin: 0.7rem 0;
+    padding: 0.45rem 0.65rem;
+}
+
+/*********************************************
+ * MEDIA & FIGURES
+ *
+ * Images size themselves: never write width/height in Markdown. Pick a
+ * width class on the wrapper or the <img> itself and the height is capped
+ * by --fig-max-h so a figure never pushes the title off the slide.
+ *
+ *   <div class="figure-wide"><img src="..."><div class="figure-caption">…</div></div>
+ *   ![图注](./images/x.png) <!-- .element: class="figure-narrow" -->
+ *
+ *   (default)        82% wide
+ *   .figure-wide     96% wide
+ *   .figure-narrow   56% wide
+ *   .figure-tall     taller cap, for portrait images / stacked charts
+ *   .figure-plain    no frame or shadow (themes decide what a frame is)
+ *   .inline          keep the image inline with text
+ *********************************************/
+.reveal section img,
+.reveal section video,
+.reveal section iframe {
+    display: block;
+    margin: 0.45em auto;
+    max-width: 100%;
+    height: auto;
+}
+
+.reveal section img {
+    width: auto;
+    max-width: 82%;
+    max-height: var(--fig-max-h);
+}
+
+/* Videos are meant to be watched: they scale up to the width class. */
+.reveal section video {
+    width: 86%;
+    max-height: var(--fig-max-h);
+}
+
+.reveal section iframe {
+    width: 100%;
+    height: var(--embed-h);
+    border: 0;
+}
+
+/* Wrapper elements only; the same classes on <img>/<video> are handled below. */
+.reveal .figure:not(img):not(video),
+.reveal .figure-wide:not(img):not(video),
+.reveal .figure-narrow:not(img):not(video),
+.reveal .figure-tall:not(img):not(video),
+.reveal .figure-plain:not(img):not(video),
+.reveal .media-frame {
+    margin: 0.3em 0 0.6em;
+    text-align: center;
+}
+
+.reveal .figure-wide img,
+.reveal img.figure-wide {
+    max-width: 96%;
+}
+
+.reveal .figure-wide video,
+.reveal video.figure-wide {
+    width: 96%;
+}
+
+.reveal .figure-narrow img,
+.reveal img.figure-narrow {
+    max-width: 56%;
+}
+
+.reveal .figure-narrow video,
+.reveal video.figure-narrow {
+    width: 56%;
+}
+
+.reveal .figure-tall img,
+.reveal img.figure-tall {
+    max-height: calc(var(--fig-max-h) + 110px);
+}
+
+.reveal .media-frame video {
+    width: 92%;
+}
+
+.reveal .media-frame iframe {
+    max-width: 92%;
+}
+
+.reveal img.inline {
+    display: inline;
+    margin: 0 0.1em;
+    vertical-align: middle;
+    max-height: 1.6em;
+}
+
+/* Inside columns a figure may use the whole column. */
+.reveal .two-col img,
+.reveal .mul-cols img {
+    max-width: 100%;
+}
+
+.reveal .two-col video,
+.reveal .mul-cols video {
+    width: 100%;
+}
+
+.reveal figcaption,
+.reveal .figure-caption {
+    margin-top: 0.15rem;
+    color: var(--text-muted);
+    font-size: 0.6em;
+    line-height: 1.35;
+    text-align: center;
+}
+
+.reveal figure {
+    margin: 0.3em 0 0.6em;
+}
+
+/*
+ * Clickable diagram: transparent links laid over an image, positioned in
+ * percent of the image box, each jumping to a slide (`#/<slide id>`).
+ *
+ *   <div class="hotspot-figure figure-tall">
+ *   <img src="./images/x.svg">
+ *   <a class="hotspot" href="#/spec" title="任务规约" style="left:40%;top:18%;width:15%;height:9%"></a>
+ *   </div>
+ *
+ * The wrapper shrinks to the image so the percentages follow its size.
+ * Give the target slide an id with <!-- .slide: id="spec" -->.
+ */
+.reveal .hotspot-figure:not(img):not(video) {
+    position: relative;
+    width: fit-content;
+    max-width: 96%;
+    margin: 0.3em auto 0.6em;
+}
+
+.reveal .hotspot-figure img {
+    margin: 0;
+    max-width: 100%;
+}
+
+.reveal .hotspot-figure .hotspot {
+    position: absolute;
+    display: block;
+    box-sizing: border-box;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.reveal .hotspot-figure .hotspot:hover,
+.reveal .hotspot-figure .hotspot:focus-visible {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    outline: none;
+}
+
+/* Full-slide iframe demo: optional ### title on top, embed below. */
+.reveal .demo-with-title {
+    text-align: center;
+}
+
+.reveal .demo-with-title h3 {
+    padding-top: 0;
+    margin-bottom: 0.6rem;
+}
+
+.reveal .demo-with-title iframe {
+    width: 100%;
+    height: calc(var(--embed-h) + 60px);
+    max-width: none;
+    max-height: none;
+}
+
+/*********************************************
+ * LAYOUT UTILITIES
+ *********************************************/
+.reveal .two-col,
+.reveal .mul-cols {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.1rem;
+}
+
+.reveal .two-col > *,
+.reveal .mul-cols .col {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.reveal .split-40-60 > :first-child {
+    flex: 0 0 40%;
+}
+
+.reveal .split-40-60 > :last-child {
+    flex: 1 1 60%;
+}
+
+.reveal .split-60-40 > :first-child {
+    flex: 1 1 60%;
+}
+
+.reveal .split-60-40 > :last-child {
+    flex: 0 0 40%;
+}
+
+.reveal .two-col > * > :first-child,
+.reveal .mul-cols .col > :first-child {
+    margin-top: 0;
+}
+
+.reveal .avatar-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    color: var(--text-muted);
+    font-size: 0.78em;
+}
+
+.reveal .avatar-img {
+    width: 85px;
+    height: 85px;
+    margin: 0;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.reveal .muted {
+    color: var(--text-muted);
+}
+
+.reveal .compact {
+    font-size: 0.86em;
+}
+
+.reveal .compact li {
+    margin-bottom: 0.14em;
+}
+
+.reveal .lead {
+    font-size: 1.08em;
+    line-height: 1.45;
+}
+
+.reveal .center {
+    text-align: center;
+}
+
+/*********************************************
+ * CALLOUTS — box model only, looks come from the theme
+ *********************************************/
+.reveal .takeaway,
+.reveal .definition,
+.reveal .theorem,
+.reveal .proof,
+.reveal .result,
+.reveal .warning,
+.reveal .danger,
+.reveal .note {
+    margin: 0.75rem 0 1rem;
+    padding: 0.65rem 1rem 0.65rem 0.9rem;
+    box-sizing: border-box;
+    max-width: 100%;
+    text-align: left;
+}
+
+.reveal .takeaway > :first-child,
+.reveal .definition > :first-child,
+.reveal .theorem > :first-child,
+.reveal .proof > :first-child,
+.reveal .result > :first-child,
+.reveal .warning > :first-child,
+.reveal .danger > :first-child,
+.reveal .note > :first-child {
+    margin-top: 0;
+}
+
+.reveal .takeaway > :last-child,
+.reveal .definition > :last-child,
+.reveal .theorem > :last-child,
+.reveal .proof > :last-child,
+.reveal .result > :last-child,
+.reveal .warning > :last-child,
+.reveal .danger > :last-child,
+.reveal .note > :last-child {
+    margin-bottom: 0;
+}
+
+/*********************************************
+ * REVEAL CHROME
+ *********************************************/
+/* Bottom-left, clear of the navigation arrows. It is an <a>: no link styling. */
+.reveal .slide-number,
+.reveal a.slide-number {
+    left: 14px;
+    right: auto;
+    bottom: 12px;
+    padding: 3px 8px;
+    border: 0;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+}
+
+.reveal .progress {
+    height: 3px;
+}
+
+/*********************************************
+ * FRAGMENTS
+ *********************************************/
+.reveal .fragment {
+    transition:
+        opacity var(--fragment-duration) var(--ease),
+        transform var(--fragment-duration) var(--ease),
+        visibility var(--fragment-duration) var(--ease),
+        color var(--fragment-duration) var(--ease),
+        background-color var(--fragment-duration) var(--ease);
+}
+
+.reveal .fragment.fade-up {
+    transform: translateY(0.6rem);
+}
+
+.reveal .fragment.fade-up.visible {
+    transform: translateY(0);
+}
+
+.reveal .fragment.disabled {
+    transition: none;
+}
+
+/*********************************************
+ * REDUCED MOTION & PRINT
+ *********************************************/
+@media (prefers-reduced-motion: reduce) {
+    .reveal .slides section,
+    .reveal .slides section > section,
+    .reveal .fragment,
+    .reveal .slide-background,
+    .reveal .progress span {
+        transition-duration: 0.01ms !important;
+        animation: none !important;
+    }
+
+    .reveal .slides section * {
+        animation: none !important;
+    }
+}
+
+@media print {
+    .reveal .slides section,
+    .reveal .slides section *,
+    .reveal .fragment {
+        animation: none !important;
+        transition: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    .backgrounds {
+        background-color: var(--bg);
+    }
+}

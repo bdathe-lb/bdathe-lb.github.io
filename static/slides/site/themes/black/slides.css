@@ -1,0 +1,36 @@
+/*
+ * 学术黑 Black — 学术蓝的黑字版
+ *
+ * 直接复用 academic 的全部版式、组件与动效，只把文字颜色换成黑色：
+ * 标题、正文、结论框文字、行内代码都是黑的。细线、提示框左沿、进度条
+ * 等非文字元素仍用学术蓝，保持页面结构感。
+ */
+
+@import url("../academic/slides.css");
+
+:root {
+    --text: #000000;
+    --text-muted: #4a4f57;
+    --text-soft: #6b7079;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+    color: #000000;
+}
+
+.reveal .takeaway {
+    color: #000000;
+}
+
+.reveal code {
+    color: #000000;
+}
+
+.reveal .slide-number {
+    color: var(--text-muted);
+}
