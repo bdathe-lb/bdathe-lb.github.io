@@ -62,9 +62,6 @@
 {{/* 一排书架 —— 不是一年一层板。四层板堆起来一千多像素，为了看完架子
      得一路往下滚，而这一排书本来是要一眼扫过去比厚薄的；竖着堆反而把
      这个比较拆散了。所以年份改成排在书之间的立隔板，架子只有一层。 */}}
-{{ $eWords := 0 }}{{ range $essays }}{{ $eWords = add $eWords .words }}{{ end }}
-{{ $eYears := slice }}
-{{ range $essays }}{{ if not (in $eYears .year) }}{{ $eYears = $eYears | append .year }}{{ end }}{{ end }}
 
 {{ $row := slice }}{{ $rowY := "" }}
 {{ range $essays }}
@@ -85,20 +82,30 @@
   {{ $seq = $seq | append (dict "kind" "card" "it" .) }}
 {{ end }}
 
-<div class="wen-tally mono">
-  <span class="k"><i></i>随笔 <b>{{ len $essays }}</b> 本 · 在架上</span>
-  <span class="k n"><i></i>笔记 <b>{{ len $notes }}</b> 张 · 在箱里</span>
-</div>
+{{/* 标签只在真能把几篇归到一起时才出现。每个标签都只挂着一篇的时候，
+     按标签筛等于按题目筛，这一行只是占地方。 */}}
+{{ $grouping := false }}
+{{ range $tags }}{{ $t := . }}
+  {{ $n := 0 }}{{ range $items }}{{ if in .tags $t }}{{ $n = add $n 1 }}{{ end }}{{ end }}
+  {{ if ge $n 2 }}{{ $grouping = true }}{{ end }}
+{{ end }}
 
-{{ with $tags }}
+{{ if $grouping }}
   <div class="filters">
+    {{ with $tags }}
     <div class="filter-set filter-tags">
       <button type="button" class="tool" data-tag="all" aria-pressed="true">全部</button>
       {{ range . }}<button type="button" class="tool tool-tag" data-tag="{{ . }}" aria-pressed="false">{{ . }}</button>{{ end }}
     </div>
+    {{ end }}
     <span class="filter-empty mono" id="filterEmpty" hidden>这个标签下没有篇目</span>
   </div>
 {{ end }}
+
+{{/* 两件家具并排摆在同一面墙前：书架宽窄跟着书走，卡片箱占剩下的地方。
+     只有一件的时候它独占一行。底下那一栏「摊开」放在两件家具外面 ——
+     它是从书架上抽出来的书摊在桌上，不该把书架那一栏撑高。 */}}
+<div class="wen-room{{ if and $essays $notes }} pair{{ end }}">
 
 {{/* ═══ 书架 · 随笔 ═══════════════════════════════════════
      No .reveal on this section: it sits at the top of the page and the
@@ -123,7 +130,6 @@
           {{ if eq $s.kind "div" }}
             <span class="divider" aria-hidden="true" style="--i:{{ $i }}">
               <b class="mono">{{ $s.year }}</b>
-              <i class="mono">{{ len (where $essays "year" $s.year) }} 本</i>
             </span>
           {{ else }}
             {{ $b := $s.it }}
@@ -151,15 +157,6 @@
                 <span class="spine-t">{{ $b.title }}</span>
                 <span class="spine-mark"></span>
               </span>
-              {{/* 封面 —— 合在架上时和屏幕垂直，等于不存在；
-                   抽出来转过身才朝向读者 */}}
-              <span class="cover" aria-hidden="true">
-                <span class="cover-k mono">随笔</span>
-                <span class="cover-t">{{ $b.title }}</span>
-                <span class="cover-rule"></span>
-                <span class="cover-m mono">{{ $b.words }} 字 · {{ $b.minutes }} 分钟</span>
-                <span class="cover-d mono">{{ $b.date.Format "2006.01.02" }}</span>
-              </span>
             </a>
           {{ end }}
         {{ end }}
@@ -168,13 +165,65 @@
       </div>
     </div>
 
-    <span class="shelf-board" aria-hidden="true">
-      <b class="mono">{{ index $eYears (sub (len $eYears) 1) }} — {{ index $eYears 0 }}</b>
-      <i class="mono">{{ len $essays }} 本 · {{ lang.FormatNumber 0 $eWords }} 字</i>
-    </span>
+    <span class="shelf-board" aria-hidden="true"></span>
   </div>
 
-  {{/* 摊开 —— 抽出一本才长开。空着时不占地方。放回去：点别处或 Esc。 */}}
+</section>
+{{ end }}
+
+{{/* ═══ 卡片箱 · 笔记 ═══════════════════════════════════
+     正面看过去的一只卡片箱：卡片竖着插在箱里，前板挡住下半截，露在
+     外面的上半截写着竖排的题名，左边一道墨条是字数 —— 卡合着的时候
+     就能互相比长短。指上去，那张卡从箱里升起一截；点一下，整张抽出来，
+     说明摊在下面那一栏，和从书架上抽出一本书是同一套。
+
+     年份是一张比卡高的隔卡，顶上一枚题签。 */}}
+{{ if $notes }}
+<section class="room" id="roomBox">
+  <div class="rule">
+    <h2>卡片箱</h2><span class="bar"></span>
+  </div>
+
+  <div class="tray" id="tray">
+    <span class="box-back" aria-hidden="true"></span>
+    <div class="slots" id="slots">
+      {{ range $i, $s := $seq }}
+        {{ if eq $s.kind "sep" }}
+          <span class="slot sep" style="--i:{{ $i }}" aria-hidden="true">
+            <b class="sep-tab mono">{{ $s.year }}</b>
+          </span>
+        {{ else }}
+          {{ $n := $s.it }}
+          {{ $wp := mul (div (float $n.words) $nMax) 100 }}
+          <a class="slot card"
+             href="{{ $n.url }}"
+             style="--i:{{ $i }}"
+             data-title="{{ $n.title }}"
+             data-date="{{ $n.date.Format "2006.01.02" }}"
+             data-words="{{ $n.words }}"
+             data-minutes="{{ $n.minutes }}"
+             data-summary="{{ $n.summary }}"
+             data-tags="{{ delimit $n.tags "|" }}"
+             data-url="{{ $n.url }}"
+             aria-label="{{ $n.title }} · {{ $n.words }} 字">
+            <span class="card-band" aria-hidden="true"></span>
+            <span class="card-title">{{ $n.title }}</span>
+            <span class="wbar" style="--wp:{{ printf "%.0f" $wp }}%" aria-hidden="true"><i></i></span>
+            <span class="card-when mono">{{ $n.date.Format "01.02" }}</span>
+          </a>
+        {{ end }}
+      {{ end }}
+    </div>
+    {{/* 前板画在卡的前面，挡住下半截。拉手在 ::after 上 */}}
+    <span class="tray-lip" aria-hidden="true"><b class="mono">NOTES</b></span>
+  </div>
+</section>
+{{ end }}
+
+</div>
+
+{{ if or $essays $notes }}
+  {{/* 摊开 —— 抽出一本书或一张卡才长开。空着时不占地方。放回去：点别处或 Esc。 */}}
   <div class="readpost" id="readpost" data-state="empty" aria-live="polite">
     <div class="rp-more"><div>
       <div class="rp-in">
@@ -191,71 +240,6 @@
       </div>
     </div></div>
   </div>
-</section>
-{{ end }}
-
-{{/* ═══ 卡片箱 · 笔记 ═══════════════════════════════════ */}}
-{{ if $notes }}
-<section class="room reveal" id="roomBox">
-  <div class="rule">
-    <h2>卡片箱</h2><span class="bar"></span>
-  </div>
-
-  <div class="tray" id="tray">
-    <div class="box">
-      <span class="box-back" aria-hidden="true"></span>
-      <span class="box-floor" aria-hidden="true"></span>
-
-      <div class="slots" id="slots">
-        {{ range $i, $s := $seq }}
-          {{ $x := mul $i 76 }}
-          {{ if eq $s.kind "sep" }}
-            <div class="slot sep" style="--x:{{ $x }}px; --i:{{ $i }}" aria-hidden="true">
-              <span class="sep-body"></span>
-              <span class="sep-tab mono">{{ $s.year }}</span>
-              <span class="sep-n">{{ len (where $notes "year" $s.year) }} 张</span>
-            </div>
-          {{ else }}
-            {{ $n := $s.it }}
-            {{ $wp := mul (div (float $n.words) $nMax) 100 }}
-            <a class="slot card"
-               href="{{ $n.url }}"
-               style="--x:{{ $x }}px; --i:{{ $i }}"
-               data-tags="{{ delimit $n.tags "|" }}"
-               data-words="{{ $n.words }}"
-               data-year="{{ $n.year }}"
-               aria-label="{{ $n.title }} · {{ $n.words }} 字">
-              <span class="card-face">
-                <span class="card-band"></span>
-                <span class="card-edge">
-                  <span class="card-title">{{ $n.title }}</span>
-                  <span class="wbar" style="--wp:{{ printf "%.0f" $wp }}%"><i></i></span>
-                </span>
-                <span class="card-when mono">{{ $n.date.Format "2006.01.02" }}</span>
-                <span class="card-body">
-                  <span class="card-kicker mono">笔记 · NOTE</span>
-                  <span class="card-sum">{{ $n.summary }}</span>
-                  <span class="card-tags">{{ range $n.tags }}<span>{{ . }}</span>{{ end }}</span>
-                  <span class="card-len mono">
-                    <span>{{ $n.words }} 字</span>
-                    <span class="card-foot-r">
-                      <span class="card-min">{{ $n.minutes }} 分钟</span>
-                      <span class="card-go">读全文 <span>→</span></span>
-                    </span>
-                  </span>
-                </span>
-              </span>
-            </a>
-          {{ end }}
-        {{ end }}
-      </div>
-    </div>
-
-    <span class="cap cap-l" aria-hidden="true"></span>
-    <span class="cap cap-r" aria-hidden="true"></span>
-    <span class="tray-lip" aria-hidden="true"></span>
-  </div>
-</section>
 {{ end }}
 
 <p class="visually-hidden" aria-live="polite" id="shelfLive"></p>

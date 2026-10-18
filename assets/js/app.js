@@ -763,6 +763,9 @@
     var bar = document.getElementById('progress');
     if (bar) {
       var tick = function () {
+        // a page that does not scroll has nothing to measure — the bar would
+        // just sit at full height down the left edge
+        bar.hidden = document.documentElement.scrollHeight <= innerHeight + 80;
         var r = art.getBoundingClientRect();
         var total = r.height - innerHeight * 0.7;
         var done = Math.min(Math.max(-r.top + innerHeight * 0.3, 0), Math.max(total, 1));

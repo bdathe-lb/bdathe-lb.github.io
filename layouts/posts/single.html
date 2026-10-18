@@ -22,40 +22,58 @@
   <h1 style="view-transition-name:articletitle">{{ .Title }}</h1>
 </header>
 
+{{/* the margin holds either a hand-written note or, failing that,
+     the table of contents — never both, it is a margin. With neither, the
+     column stays (so the text keeps its measure and its place) but nothing
+     is drawn in it: an empty marginalia was a lone hairline. */}}
+{{ $margin := "" }}
+{{ with .Params.note }}
+  {{ $margin = . | markdownify }}
+{{ else }}
+  {{ with .TableOfContents }}{{ if gt (len .) 60 }}
+    {{ $margin = printf `<span class="toc-title">目录</span>%s` . | safeHTML }}
+  {{ end }}{{ end }}
+{{ end }}
+
 <div class="article-grid">
   <div class="margin-col">
-    <aside class="marginalia">
-      {{/* the margin holds either a hand-written note or, failing that,
-           the table of contents — never both, it is a margin */}}
-      {{ with .Params.note }}
-        {{ . | markdownify }}
-      {{ else }}
-        {{ with .TableOfContents }}
-          {{ if gt (len .) 60 }}
-            <span class="toc-title">目录</span>{{ . }}
-          {{ end }}
-        {{ end }}
-      {{ end }}
-    </aside>
+    {{ with $margin }}<aside class="marginalia">{{ . }}</aside>{{ end }}
   </div>
 
   <article class="prose">
     {{ .Content }}
 
+    {{/* 只在同一件家具里翻：随笔翻随笔，笔记翻笔记 —— 从书架上读完一本，
+         下一本也该在书架上，而不是忽然翻进卡片箱。方向写成「较早 / 较新」
+         并带上日期：「上一篇」到底是更早还是更新，每个站说法都不一样。 */}}
+    {{ $form := .Params.form | default "essay" }}
+    {{ $same := slice }}
+    {{ range where .CurrentSection.RegularPages ".Params.private" "!=" true }}
+      {{ if eq (.Params.form | default "essay") $form }}{{ $same = $same | append . }}{{ end }}
+    {{ end }}
+    {{ $older := "" }}{{ $newer := "" }}
+    {{ range sort $same "Date" "desc" }}
+      {{ if and (not $older) (lt .Date.Unix $.Date.Unix) }}{{ $older = . }}{{ end }}
+    {{ end }}
+    {{ range sort $same "Date" "asc" }}
+      {{ if and (not $newer) (gt .Date.Unix $.Date.Unix) }}{{ $newer = . }}{{ end }}
+    {{ end }}
+    {{ if or $older $newer }}
     <nav class="post-nav">
-      {{ with .NextInSection }}
+      {{ with $older }}
         <a class="nav-prev" href="{{ .RelPermalink }}">
-          <span class="nav-label mono">← 上一篇</span>
+          <span class="nav-label mono">← 较早一篇 · {{ .Date.Format "2006.01.02" }}</span>
           <span class="nav-title">{{ .Title }}</span>
         </a>
       {{ end }}
-      {{ with .PrevInSection }}
+      {{ with $newer }}
         <a class="nav-next" href="{{ .RelPermalink }}">
-          <span class="nav-label mono">下一篇 →</span>
+          <span class="nav-label mono">{{ .Date.Format "2006.01.02" }} · 较新一篇 →</span>
           <span class="nav-title">{{ .Title }}</span>
         </a>
       {{ end }}
     </nav>
+    {{ end }}
   </article>
 </div>
 {{ end }}

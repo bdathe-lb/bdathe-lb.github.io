@@ -4,13 +4,13 @@
     <h1>{{ .Title }}</h1>
     {{ with .Content }}<div class="lede">{{ . }}</div>{{ end }}
   </div>
-  {{ with .Pages }}<span class="count">{{ printf "%02d" (len .) }} 篇</span>{{ end }}
 </header>
 
 <div class="writing">
   {{ range sort (where .Pages ".Params.private" "!=" true) "Date" "desc" }}
-    <a class="entry reveal essay" href="{{ .RelPermalink }}">
-      <span class="when mono">{{ .Date.Format "2006.01.02" }}</span>
+    {{/* 标签总表里一行是一个标签，没有日期 */}}
+    <a class="entry reveal essay{{ if .Date.IsZero }} undated{{ end }}" href="{{ .RelPermalink }}">
+      {{ if not .Date.IsZero }}<span class="when mono">{{ .Date.Format "2006.01.02" }}</span>{{ end }}
       <div>
         <h3>{{ .Title }}</h3>
         <p class="sum">{{ with .Params.summary }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 110 }}{{ end }}</p>

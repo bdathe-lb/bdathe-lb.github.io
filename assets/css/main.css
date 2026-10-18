@@ -678,13 +678,6 @@ img { max-width: 100%; }
   max-width: 30em;
 }
 .page-head .lede p { margin: 0; }
-.page-head .count {
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-  white-space: nowrap;
-}
 
 /* centred variant — the 诗 index is set on the centre line throughout */
 .page-head--center {
@@ -919,7 +912,7 @@ img { max-width: 100%; }
 
 .entry {
   display: grid;
-  grid-template-columns: 3.6rem 1fr;
+  grid-template-columns: 5rem 1fr;
   gap: 1.6rem;
   padding: 1.8rem 0;
   border-bottom: 1px solid var(--line);
@@ -928,6 +921,7 @@ img { max-width: 100%; }
 .entry:hover { padding-left: 0.7rem; }
 .entry.hide { display: none; }
 .entry .when { padding-top: 0.35rem; }
+.entry.undated { grid-template-columns: 1fr; }
 
 /* ── length, drawn ── */
 .entry-foot {
