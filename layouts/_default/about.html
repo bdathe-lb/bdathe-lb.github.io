@@ -1,0 +1,48 @@
+{{ define "main" }}
+{{/* ═══════════════════════════════════════════════════════════
+     关于 —— 一张藏书票，然后是正文
+
+     首页「我」那张卡是一张藏书票：双边框、一句引文、一枚印。这一页就从
+     那张票开始 —— 名字、一行身份、研究方向，和找得到人的两条路；印盖在
+     右下角。正文是自己写的，一个字不动，只是不再给它让出一栏空着的旁注。
+     页尾落款，再盖一次印。
+
+     正文里 {{< here >}} 那一段是一张活的目录（shortcodes/here.html）：
+     条数、最近一次更新，构建时自己算。
+     ═══════════════════════════════════════════════════════════ */}}
+
+<article class="about">
+  <header class="bookplate">
+    <span class="bp-kicker mono">EX LIBRIS · {{ site.Title | upper }}</span>
+    <h1 class="bp-name">{{ .Params.name | default .Title }}</h1>
+    {{ with .Params.role }}<p class="bp-role">{{ . }}</p>{{ end }}
+    {{ with .Params.focus }}<p class="bp-focus mono">{{ . }}</p>{{ end }}
+
+    <div class="bp-links">
+      {{ with site.Params.github }}
+        <a href="{{ . }}" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+          GitHub
+        </a>
+      {{ end }}
+      {{ with site.Params.email }}
+        <a href="mailto:{{ . }}">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          {{ . }}
+        </a>
+      {{ end }}
+    </div>
+
+    <i class="seal bp-seal" aria-hidden="true">印</i>
+  </header>
+
+  <div class="prose about-prose">
+    {{ .Content }}
+  </div>
+
+  <footer class="about-sign">
+    <span class="mono">— {{ .Params.name | default site.Title }} · {{ now.Format "2006" }}</span>
+    <i class="seal" aria-hidden="true">印</i>
+  </footer>
+</article>
+{{ end }}

@@ -1,6 +1,11 @@
 +++
 title = "About"
 date = 2026-02-05
+layout = "about"
+# 藏书票上的三行
+name = "Bdathe"
+role = "Graduate student, Computer Science and Technology"
+focus = "UAV Task Allocation · Path Planning"
 +++
 
 Hello, I am **Bdathe**.
@@ -13,17 +18,13 @@ Throughout my journey of studying and coding, I realized that knowledge needs to
 
 ### What's here?
 
-* **文 / writing**:
-    Footprints along the timeline — essays, toy projects, debugging logs, and study notes.
-
-* **诗 / poems**:
-    A few poems worth coming back to, with a plain-language reading of each.
-
-* **音 / music**:
-    A collection of songs that resonate with me.
-
-* **影 / photos**:
-    Beyond code, I also love observing the world. Here lies the scenery and life moments captured through my lens.
+{{< here
+  writing="Footprints along the timeline — essays, toy projects, debugging logs, and study notes."
+  poems="A few poems worth coming back to, with a plain-language reading of each."
+  music="A collection of songs that resonate with me."
+  photos="Beyond code, I also love observing the world. Here lies the scenery and life moments captured through my lens."
+  slides="Slides from group meetings and paper readings."
+>}}
 
 ### Final Thoughts
 

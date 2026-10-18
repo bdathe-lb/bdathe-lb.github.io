@@ -1,0 +1,40 @@
+{{/* 一张活的目录 —— 关于页 "What's here?" 那一段。
+
+     栏目来自 hugo.toml 的 [[params.nav]]；描述是作者自己写的那一句，用
+     栏目的 latin 名当参数传进来；条数和最近一次更新在构建时算，以后加了
+     东西不用回来改这里。
+
+       {{< here writing="…" poems="…" music="…" photos="…" slides="…" >}} */}}
+
+{{- $count := dict -}}
+{{- $latest := dict -}}
+
+{{- with site.GetPage "/posts" -}}
+  {{- $ps := where .Pages ".Params.private" "!=" true -}}
+  {{- $count = merge $count (dict "writing" (len $ps)) -}}
+  {{- with $ps.ByDate.Reverse -}}{{- $latest = merge $latest (dict "writing" (index . 0).Date) -}}{{- end -}}
+{{- end -}}
+{{- range $k, $rows := dict "poems" hugo.Data.poems "music" hugo.Data.music "photos" hugo.Data.photos "slides" hugo.Data.slides -}}
+  {{- $count = merge $count (dict $k (len $rows)) -}}
+  {{- with sort $rows "date" "desc" -}}{{- $latest = merge $latest (dict $k (time.AsTime (index . 0).date)) -}}{{- end -}}
+{{- end -}}
+
+{{- $unit := dict "writing" "piece" "poems" "poem" "music" "song" "photos" "photo" "slides" "deck" -}}
+
+<nav class="here" aria-label="What's here">
+  {{- range site.Params.nav }}
+    {{- $k := .latin -}}
+    {{- $n := index $count $k | default 0 -}}
+    <a class="here-row" href="{{ .url | relURL }}">
+      <span class="here-ch">{{ .name }}</span>
+      <span class="here-txt">
+        <b class="mono">{{ $k }}</b>
+        {{ with $.Get $k }}<span>{{ . }}</span>{{ end }}
+      </span>
+      <span class="here-n mono">
+        {{ $n }} {{ index $unit $k }}{{ if ne $n 1 }}s{{ end }}
+        {{ with index $latest $k }}<i>latest {{ .Format "2006.01.02" }}</i>{{ end }}
+      </span>
+    </a>
+  {{- end }}
+</nav>
