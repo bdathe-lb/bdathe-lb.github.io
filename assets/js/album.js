@@ -48,6 +48,12 @@
   var closeBtn = document.getElementById('alClose');
   var capT = document.getElementById('alCapT');
   var capM = document.getElementById('alCapM');
+  var capN = document.getElementById('alCount');
+  var nextPage = document.getElementById('alNext');
+  var prevPage = document.getElementById('alPrevPage');
+  var prevPhoto = document.getElementById('alPrev');
+  var nextPhoto = document.getElementById('alNextPhoto');
+  var tabs = Array.prototype.slice.call(book.querySelectorAll('.al-tab'));
 
   var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var narrow = matchMedia('(max-width: 860px)');
@@ -76,6 +82,16 @@
       el.setAttribute('aria-hidden', i === n ? 'false' : 'true');
     });
     cur = n;
+    /* 页角只在真有那一页的时候翘起来；签是这一跨页上有的月份就抽出来 */
+    book.classList.toggle('has-prev', n > 0);
+    book.classList.toggle('has-next', n < spreads.length - 1);
+    var keys = {};
+    spreads[n].querySelectorAll('.leaf').forEach(function (l) { if (l.dataset.key) keys[l.dataset.key] = 1; });
+    tabs.forEach(function (t) {
+      var on = !!keys[t.dataset.key];
+      t.classList.toggle('on', on);
+      if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+    });
   }
 
   function finishTurn() {
@@ -84,6 +100,7 @@
     var n = pending;
     turner.className = 'turner';
     hold.className = 'holdover';
+    book.classList.remove('turning');
     /* 再 paint 一次兜底，而且它是幂等的：标签页在后台时 rAF 根本不跑，
        上面那次换跨页就没发生过，翻页会静悄悄地失效。 */
     if (n >= 0) paint(n);
@@ -119,6 +136,8 @@
     busy = true;
     pending = next;
     clearTimers();
+    book.classList.remove('hint');
+    book.classList.add('turning');
 
     var from = spreads[cur];
     var into = spreads[next];
@@ -197,6 +216,31 @@
       if (img.decode) img.decode().catch(function () {});
     });
   });
+
+  /* ── 页角 与 索引签 ────────────────────────────────── */
+
+  if (nextPage) nextPage.addEventListener('click', function () { turn(cur + 1); });
+  if (prevPage) prevPage.addEventListener('click', function () { turn(cur - 1); });
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      var n = +t.dataset.s;
+      /* 这个月就摊在眼前（它可能跨了两个跨页）就不必翻 */
+      if (!t.classList.contains('on')) turn(n);
+    });
+  });
+
+  /* 开页一会儿，右下角自己掀一下 —— 只一次，而且人已经动过手就不掀了 */
+  var touched = false;
+  ['pointerdown', 'keydown'].forEach(function (ev) {
+    addEventListener(ev, function () { touched = true; }, { once: true, passive: true });
+  });
+  if (!still && spreads.length > 1) {
+    setTimeout(function () {
+      if (touched || cur !== 0 || busy) return;
+      book.classList.add('hint');
+      setTimeout(function () { book.classList.remove('hint'); }, 1200);
+    }, 1600);
+  }
 
   /* ── 拿起来 ───────────────────────────────────────── */
 
@@ -283,6 +327,26 @@
     setTimeout(function () { mount.classList.remove('corner-flex'); }, 620);
   }
 
+  /* 全册的照片，按贴的顺序；每张记着自己的相角和所在的跨页。打开以后
+     元素会被搬进看图位，所以这些要趁它还在相册里的时候记下来。 */
+  var photos = [];
+  spreads.forEach(function (sp, si) {
+    sp.querySelectorAll('.photo').forEach(function (a) {
+      a.dataset.s = si;
+      a._mount = a.parentNode;
+      photos.push(a);
+    });
+  });
+
+  function label(a) {
+    if (capT) capT.textContent = a.dataset.caption || a.dataset.title || '';
+    if (capM) capM.textContent = fmt(a.dataset.date) + ' · ' + (a.dataset.title || '');
+    var i = photos.indexOf(a);
+    if (capN) capN.textContent = (i + 1) + ' / ' + photos.length;
+    if (prevPhoto) prevPhoto.disabled = i <= 0;
+    if (nextPhoto) nextPhoto.disabled = i >= photos.length - 1;
+  }
+
   function show(a) {
     if (flying || open || busy) return;
     home = a.parentNode;
@@ -298,8 +362,7 @@
       lb.classList.add('on');
       lb.setAttribute('aria-hidden', 'false');
       document.body.classList.add('lb-open');
-      if (capT) capT.textContent = a.dataset.caption || a.dataset.title || '';
-      if (capM) capM.textContent = fmt(a.dataset.date) + ' · ' + (a.dataset.title || '');
+      label(a);
       open = a;
     }, function () {
       if (closeBtn) closeBtn.focus({ preventScroll: true });
@@ -335,6 +398,44 @@
       flexCorners(mount);
     }, true);
   }
+
+  /* ── 看下一张 ──
+     手上这张直接放回它的相角（纱底下，没人看得见那一下），下一张从它的
+     相角里拿进来，只在看图位里横着滑一小段。下一张若贴在别的跨页上，
+     底下的相册悄悄翻过去 —— 放回去的时候，它才落得回自己的那一页。 */
+  function step(d) {
+    if (!open || flying || busy) return;
+    var i = photos.indexOf(open);
+    var a = photos[i + d];
+    if (!a) return;
+
+    var was = open;
+    var wasMount = home;
+    wasMount.appendChild(was);
+    wasMount.classList.remove('is-lent');
+    wasMount.style.height = '';
+    var img = was.querySelector('img');
+    if (img && was.dataset.thumb && !(ready[was.dataset.full])) img.src = was.dataset.thumb;
+
+    if (+a.dataset.s !== cur) paint(+a.dataset.s);
+    home = a._mount;
+    home.style.height = home.offsetHeight + 'px';
+    home.classList.add('is-lent');
+    frame.appendChild(a);
+    open = a;
+    label(a);
+    sharpen(a);
+    warm(photos[i + d + d]);
+    if (!still && a.animate) {
+      a.animate(
+        [{ opacity: 0, transform: 'translateX(' + (d * 28) + 'px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 260, easing: 'cubic-bezier(.2,.7,.3,1)' }
+      );
+    }
+    say('已打开 ' + (a.dataset.title || '') + ' · ' + (a.dataset.caption || ''));
+  }
+  if (prevPhoto) prevPhoto.addEventListener('click', function () { step(-1); });
+  if (nextPhoto) nextPhoto.addEventListener('click', function () { step(1); });
 
   /* 想看它，就是取大图的时机 —— 指针落上去、拿到焦点、刚按下去。
      等松手才开始取，那半秒钟正好落在动画里。 */
@@ -377,6 +478,8 @@
     if (document.querySelector('.cmdk.on')) return;
     if (open) {
       if (e.key === 'Escape') { e.preventDefault(); hide(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
       return;
     }
     if (e.key === 'ArrowRight') { e.preventDefault(); turn(cur + 1); }

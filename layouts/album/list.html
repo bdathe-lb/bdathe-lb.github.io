@@ -57,10 +57,36 @@
 {{ end }}
 {{ $spreads := div (len $leaves) 2 }}
 
+{{/* ── 索引签 ────────────────────────────────────────────
+     每个月一张，按出现的先后排，指向这个月第一次出现的那个跨页。
+     册子摊开时就能看出它有几页、跨了哪些月份 —— 原来这只能靠翻。 */}}
+{{ $tabs := slice }}
+{{ $seen := dict }}
+{{ range $i, $lf := $leaves }}
+  {{ if and $lf.key (not (index $seen $lf.key)) }}
+    {{ $seen = merge $seen (dict $lf.key true) }}
+    {{ $t := time.AsTime (printf "%s-01" $lf.key) }}
+    {{ $tabs = $tabs | append (dict "k" $lf.key "s" (div $i 2) "y" ($t.Format "06") "m" (index $mon (int ($t.Format "1")))) }}
+  {{ end }}
+{{ end }}
+
 <section class="al-wrap" id="alWrap">
 
   <div class="al-book" id="alBook" data-spread="0">
     <span class="al-gutter" aria-hidden="true"><i></i></span>
+
+    {{/* 书口上伸出来的月份签 */}}
+    <nav class="al-tabs" id="alTabs" aria-label="按月份翻到">
+      {{ range $tabs }}
+        <button type="button" class="al-tab{{ if eq .s 0 }} on{{ end }}" data-s="{{ .s }}" data-key="{{ .k }}"
+                aria-label="翻到 20{{ .y }} 年{{ .m }}"><i class="mono">{{ .y }}</i><b>{{ .m }}</b></button>
+      {{ end }}
+    </nav>
+
+    {{/* 页角 —— 翘起来的那一角就是"这里能翻"。一册的事，不属于哪一叶，
+         所以不在叶子里，也就不会被克隆进翻动的那张纸。 */}}
+    <button type="button" class="al-corner next" id="alNext" aria-label="下一页"><i></i></button>
+    <button type="button" class="al-corner prev" id="alPrevPage" aria-label="上一页"><i></i></button>
 
     {{ range $s := seq 0 (sub $spreads 1) }}
       <div class="spread{{ if eq $s 0 }} on{{ end }}" data-s="{{ $s }}">
@@ -69,14 +95,13 @@
           {{ $items := $leaf.items }}
           {{ $side := cond (eq $k 0) "l" "r" }}
 
-          <div class="leaf {{ $side }}" data-leaf="{{ add (mul $s 2) $k }}">
+          <div class="leaf {{ $side }}" data-leaf="{{ add (mul $s 2) $k }}" data-key="{{ $leaf.key }}">
 
             {{ if $items }}
               {{ $first := index $items 0 }}
               {{ $t := time.AsTime $first.date }}
               <div class="leaf-t">
                 <b>{{ $t.Format "2006" }} · {{ index $mon (int ($t.Format "1")) }}</b>
-                <span class="mono">{{ printf "%02d" (len $items) }} 张</span>
               </div>
 
               <div class="leaf-body">
@@ -103,6 +128,12 @@
                        自己重贴一遍。 */}}
                   {{ $rot := mul (sub (mod (add (len $p.title) $i) 5) 2) 0.55 }}
 
+                  {{/* 贴法：一叶两张就错开，第一张靠订口外、第二张靠另一边；一叶
+                       一张就贴在当中。照片旁边留得出 176px，说明就写在旁边 ——
+                       窄的竖幅几乎总是这样；横幅占满了，才写到下面去。 */}}
+                  {{ $align := cond (eq (len $items) 1) "al-c" (cond (eq $i 1) "al-r" "al-l") }}
+                  {{ $beside := ge (sub 424.0 $w) 176.0 }}
+                  <div class="pasted {{ $align }}{{ if $beside }} side{{ end }}">
                   <div class="mount" style="width: {{ printf "%.0f" $w }}px">
                     <a class="photo"
                        href="{{ $full }}"
@@ -130,6 +161,7 @@
                   {{/* 说明写在照片旁边，略微歪一点 —— 台纸上的字是手写的，
                        手写的东西不会和边框平行 */}}
                   <p class="hand">{{ $p.caption }}<em class="mono">{{ $p.title }} · {{ (time.AsTime $p.date).Format "2006.01.02" }}</em></p>
+                  </div>
                 {{ end }}
               </div>
             {{ else }}
@@ -164,10 +196,17 @@
 <div class="al-lb" id="alLb" aria-hidden="true">
   <div class="al-veil" id="alVeil"></div>
   <button type="button" class="al-close" id="alClose" aria-label="放回相角里">✕</button>
+  <button type="button" class="al-nav prev" id="alPrev" aria-label="上一张">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 3.5 5.5 9l5.5 5.5"/></svg>
+  </button>
+  <button type="button" class="al-nav next" id="alNextPhoto" aria-label="下一张">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5 12.5 9 7 14.5"/></svg>
+  </button>
   <div class="al-frame" id="alFrame" role="dialog" aria-modal="true" aria-label="看照片"></div>
   <div class="al-cap" id="alCap">
     <span class="serif" id="alCapT"></span>
     <em class="mono" id="alCapM"></em>
+    <span class="al-count mono" id="alCount"></span>
   </div>
 </div>
 

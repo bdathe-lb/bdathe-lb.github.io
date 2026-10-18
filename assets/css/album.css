@@ -126,8 +126,11 @@
   padding: 2rem 2.2rem 2.6rem;
   display: flex;
   flex-direction: column;
-  cursor: pointer;
 }
+/* 只有真能翻的那一侧才像能点：第一个跨页的左叶点了什么也不会发生，
+   就不该给它一只手 */
+.al-book.has-next .spread.on .leaf.r,
+.al-book.has-prev .spread.on .leaf.l { cursor: pointer; }
 
 .leaf-t {
   display: flex;
@@ -138,9 +141,24 @@
   border-bottom: 1px solid rgba(27, 36, 48, 0.07);
 }
 .leaf-t b { font-family: var(--serif); font-size: 0.98rem; letter-spacing: 0.12em; }
-.leaf-t .mono { margin-left: auto; font-size: 0.56rem; }
 
-.leaf-body { display: flex; flex-direction: column; gap: 0.35rem; }
+.leaf-body { display: flex; flex-direction: column; gap: 0.6rem; }
+
+/* ── 贴法 ──
+   一张照片和它的说明是一组。一叶两张时错开贴（.al-l / .al-r），一叶一张
+   时贴在当中（.al-c）；照片旁边留得出地方（.side），说明就写在旁边，
+   和照片的下沿对齐，像在台纸上顺手写的。 */
+.pasted { display: flex; flex-direction: column; align-items: flex-start; }
+.pasted.al-r { align-items: flex-end; }
+.pasted.al-c { align-items: center; margin-top: 0.6rem; }
+.pasted.al-r .hand { text-align: right; margin-right: 0.4rem; }
+.pasted.al-c .hand { text-align: center; margin-left: 0; }
+
+.pasted.side { flex-direction: row; align-items: flex-end; gap: 1.2rem; }
+.pasted.side.al-r { flex-direction: row-reverse; }
+.pasted.side.al-c { justify-content: center; }
+.pasted.side .hand { flex: 0 1 auto; max-width: 15em; margin: 0 0 1.2rem; text-align: left; }
+.pasted.side.al-r .hand { text-align: right; }
 
 /* 页码在下角，和真册子一样：左页在左，右页在右 */
 .leaf-no {
@@ -162,6 +180,106 @@
   letter-spacing: 0.2em;
   opacity: 0.6;
 }
+
+/* ─────────────────────────────────────────────────────────
+   索引签 —— 书口上伸出来的一排月份
+   ───────────────────────────────────────────────────────── */
+
+.al-tabs {
+  position: absolute;
+  top: 3.2rem;
+  right: -34px;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.al-tab {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 34px;
+  padding: 0.55rem 0 0.6rem 8px;
+  border: 1px solid rgba(27, 36, 48, 0.1);
+  border-left: 0;
+  border-radius: 0 4px 4px 0;
+  background: #e4e9ef;
+  color: var(--muted);
+  cursor: pointer;
+  /* 收在书口后面一点，被指着时再抽出来 */
+  transform: translateX(-6px);
+  transition: transform var(--mid) var(--spring), background var(--fast) var(--soft), color var(--fast) var(--soft);
+}
+.al-tab i { font-style: normal; font-size: 0.5rem; letter-spacing: 0.04em; }
+.al-tab b {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  writing-mode: vertical-rl;
+}
+.al-tab:hover, .al-tab:focus-visible { transform: none; color: var(--ink); outline: none; }
+/* 这一跨页上有的月份，签是白的、抽出来的 */
+.al-tab.on { transform: none; background: var(--card); color: var(--accent-deep); }
+
+/* ─────────────────────────────────────────────────────────
+   页角 —— 翘起来的那一角就是"这里能翻"
+   ───────────────────────────────────────────────────────── */
+
+.al-corner {
+  appearance: none;
+  position: absolute;
+  bottom: 0;
+  z-index: 7;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  display: none;
+}
+.al-corner.next { right: 0; }
+.al-corner.prev { left: 0; }
+.al-book.has-next .al-corner.next,
+.al-book.has-prev .al-corner.prev { display: block; }
+.al-book.turning .al-corner { visibility: hidden; }
+
+/* 折起来的那一小块。对角线靠角的那一半，是这一页掀开后露出来的下一页
+   （比台纸深一档）；另一半是折过来的这一页的背面 —— 折线处最亮，往尖上
+   渐暗，再沿折线投一道影在台纸上。 */
+.al-corner i {
+  position: absolute;
+  bottom: 0;
+  width: 30px;
+  height: 30px;
+  transition: transform 320ms var(--spring);
+}
+.al-corner.next i {
+  right: 0;
+  transform-origin: 100% 100%;
+  background: linear-gradient(315deg, #d6dde5 0 50%, #ffffff 50%, #e7ecf1 100%);
+  box-shadow: -1px -1px 0 rgba(27, 36, 48, 0.04);
+  filter: drop-shadow(-3px -3px 3px rgba(27, 36, 48, 0.16));
+}
+.al-corner.prev i {
+  left: 0;
+  transform-origin: 0 100%;
+  background: linear-gradient(45deg, #d6dde5 0 50%, #ffffff 50%, #e7ecf1 100%);
+  filter: drop-shadow(3px -3px 3px rgba(27, 36, 48, 0.16));
+}
+.al-corner:hover i, .al-corner:focus-visible i { transform: scale(1.75); }
+.al-corner:focus-visible { outline: none; }
+
+/* 打开页面一会儿后，右下角自己掀一下又落回去 —— 只一次，告诉人这里能翻 */
+@keyframes cornerHint {
+  0%, 100% { transform: scale(1); }
+  40%      { transform: scale(1.75); }
+  70%      { transform: scale(1.5); }
+}
+.al-book.hint .al-corner.next i { animation: cornerHint 1100ms var(--soft) both; }
 
 /* ─────────────────────────────────────────────────────────
    相角 与 照片
@@ -471,6 +589,32 @@
 
 .al-frame { display: flex; align-items: center; justify-content: center; }
 
+/* 上一张 / 下一张：贴着屏幕两边，不压照片 */
+.al-nav {
+  position: fixed;
+  top: 50%;
+  z-index: 4;
+  appearance: none;
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color var(--fast) var(--soft), border-color var(--fast) var(--soft),
+              transform var(--fast) var(--spring), opacity var(--fast) var(--soft);
+}
+.al-nav.prev { left: 1.8rem; view-transition-name: album-prev; }
+.al-nav.next { right: 1.8rem; view-transition-name: album-next; }
+.al-nav:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.al-nav.prev:hover:not(:disabled) { transform: translateX(-2px); }
+.al-nav.next:hover:not(:disabled) { transform: translateX(2px); }
+.al-nav:disabled { opacity: 0; cursor: default; }
+
 /* 拿到手上的那一张：没有相角，没有偏角，正着看 */
 .al-frame .photo {
   width: min(92vw, 1080px, calc(78vh * var(--ar, 1.5)));
@@ -493,6 +637,7 @@
 }
 .al-cap .serif { display: block; font-size: 1.02rem; letter-spacing: 0.04em; }
 .al-cap em { display: block; font-style: normal; margin-top: 0.2rem; }
+.al-count { display: block; margin-top: 0.5rem; font-size: 0.54rem; letter-spacing: 0.16em; color: var(--muted); }
 
 /* ─────────────────────────────────────────────────────────
    拿起来 —— 那一段飞行
@@ -525,6 +670,8 @@
   :root.album-swap::view-transition-group(album-veil) { z-index: 1; }
   :root.album-swap::view-transition-group(photo-open) { z-index: 2; }
   :root.album-swap::view-transition-group(album-x),
+  :root.album-swap::view-transition-group(album-prev),
+  :root.album-swap::view-transition-group(album-next),
   :root.album-swap::view-transition-group(album-cap) { z-index: 3; }
 
   /* plus-lighter 是交叉淡入的默认混合，在这种纸色上会把中点冲成一片白 */
@@ -544,7 +691,11 @@
   :root.album-swap::view-transition-old(album-veil),
   :root.album-swap::view-transition-new(album-veil),
   :root.album-swap::view-transition-old(album-x),
-  :root.album-swap::view-transition-new(album-x) { animation-duration: 260ms; }
+  :root.album-swap::view-transition-new(album-x),
+  :root.album-swap::view-transition-old(album-prev),
+  :root.album-swap::view-transition-new(album-prev),
+  :root.album-swap::view-transition-old(album-next),
+  :root.album-swap::view-transition-new(album-next) { animation-duration: 260ms; }
 
   /* 说明是后到的。照片还在半路上就把字摆好，等于替读者先念了一遍；
      让它等照片落定再从下面浮上来。 */
@@ -577,6 +728,8 @@
 :root:not(.album-live) .al-gutter,
 :root:not(.album-live) .glassine,
 :root:not(.album-live) .turner,
+:root:not(.album-live) .al-tabs,
+:root:not(.album-live) .al-corner,
 :root:not(.album-live) .al-lb { display: none; }
 :root:not(.album-live) .spread { display: flex; }
 :root:not(.album-live) .leaf { height: auto; border-bottom: 1px solid var(--line); }
@@ -592,7 +745,9 @@
   :root { --leaf-h: auto; }
 
   .al-book { display: block; height: auto; perspective: none; }
-  .al-book::before, .al-book::after, .al-gutter, .glassine { display: none; }
+  .al-book::before, .al-book::after, .al-gutter, .glassine, .al-tabs { display: none; }
+  .pasted.side { flex-direction: column; align-items: flex-start; }
+  .pasted.side .hand { flex: none; margin: 0.5rem 0 0.9rem 0.4rem; }
   /* 窄屏高度跟着内容走，不能再把跨页绝对定位叠在一起 */
   :root.album-live .spread {
     display: none;
@@ -614,12 +769,16 @@
 
   .al-lb { padding: 3.4rem 1rem 6rem; }
   .al-close { top: 1rem; right: 1rem; }
+  .al-nav { top: auto; bottom: 1.6rem; margin-top: 0; }
+  .al-nav.prev { left: 1rem; }
+  .al-nav.next { right: 1rem; }
   .al-frame .photo { width: min(94vw, calc(66vh * var(--ar, 1.5))); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .photo, .photo img { transition: none; }
   .mount.corner-flex::before { animation: none; }
+  .al-book.hint .al-corner.next i { animation: none; }
   .turner.f.go, .turner.b.go, .turner.go .face::after,
   .turner.f.go .face.front .glassine { animation: none; }
   .turner { display: none !important; }
