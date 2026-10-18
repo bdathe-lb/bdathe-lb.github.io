@@ -1,11 +1,11 @@
 {{ define "main" }}
 {{/* ═══════════════════════════════════════════════════════════
-     音 · vinyl — 掀盖 / 抽片 / 上盘
+     音 · vinyl — 案头 / 抽片 / 上盘
 
-     The machine is the page: the records live on a rack, the turntable
-     sits under a hinged acrylic lid, and playing something means opening
-     the lid, lowering a record onto the spindle, shutting it, and letting
-     the arm drop.
+     The machine is the page: a turntable lying on the desk seen from above,
+     a loose pile of records beside it, and playing something means sliding
+     a record out of its sleeve, laying it on the platter, and letting the
+     arm swing over and set down.
 
      Covers and 30s iTunes previews are vendored by scripts/fetch-covers.py.
      The machine plays the local clip; Spotify / QQ stay as outbound links.
@@ -49,63 +49,61 @@
 
 {{/* No .reveal on the stage: it sits at the top of the page, and the class
      would take over the scroll timeline the machine needs for its own. */}}
-<section class="vstage" id="vstage" data-lid="closed" data-state="empty" data-arm="parked">
+<section class="vstage" id="vstage" data-state="empty" data-arm="parked">
 
-  {{/* ── 唱机 ────────────────────────────────────────────
-       Drawn white with a clear lid rather than the usual black plinth —
-       partly because this site has no dark theme to put a black object in,
-       and partly because the machine that already looks like this (Braun's
-       SK4, white steel and plexiglass) is exactly the right register. The
-       record is then the only dark thing on the page, which is precisely
-       what it should be. */}}
-  <div class="machine" id="machine">
-    <div class="deck3d">
+  {{/* ── 案头 ────────────────────────────────────────────
+       Seen from straight above, the way the 诗 desk and the home page desk
+       are: a matte machine lying on the desk, a little askew, with the
+       sleeve of whatever is playing tucked under its corner and the
+       readout written on a card beside it. Nothing here is in perspective,
+       so the platter is a circle, and a record put on it lands as one. */}}
+  <div class="vdesk" id="machine">
+    {{/* the sleeve the playing record came out of */}}
+    <img class="vsleeve" id="vsleeve" alt="" width="400" height="400" decoding="async">
 
-      <div class="plinth">
-        <span class="plinth-face" aria-hidden="true"></span>
-
-        <div class="platter">
-          <span class="platter-mat" aria-hidden="true"></span>
-
-          {{/* the record itself — only here once one has been loaded */}}
-          <div class="vdisc" id="vdisc" aria-hidden="true">
-            <span class="vdisc-grooves"></span>
-            <img class="vdisc-label" id="vdiscLabel" alt="" width="400" height="400">
-            <span class="vdisc-hole"></span>
-          </div>
-
-          <span class="spindle" aria-hidden="true"></span>
+    <div class="deck" aria-hidden="true">
+      <div class="platter">
+        <span class="strobe"></span>
+        {{/* the record itself — only here once one has been loaded */}}
+        <div class="vdisc" id="vdisc">
+          <span class="vdisc-grooves"></span>
+          <img class="vdisc-label" id="vdiscLabel" alt="" width="400" height="400" decoding="async">
+          <span class="vdisc-hole"></span>
         </div>
-
-        {{/* the cartridge rides inside the rod, so it inherits the rod's
-             angle instead of needing the same rotation kept in step twice */}}
-        <div class="tonearm" id="tonearm" aria-hidden="true">
-          <i class="arm-base"></i>
-          <i class="arm-rod"><i class="arm-head"></i></i>
-        </div>
-
-        <div class="panel" aria-hidden="true">
-          <span class="panel-dot" id="panelDot"></span>
-          <span class="panel-txt mono">33⅓</span>
-        </div>
+        {{/* light off the vinyl stays where the lamp is; it does not turn */}}
+        <span class="vsheen"></span>
       </div>
 
-      {{/* hinged at the back edge; the whole thing is one rotateX */}}
-      <button type="button" class="lid" id="lid" aria-label="打开或合上机盖" aria-pressed="false">
-        <span class="lid-glass" aria-hidden="true"></span>
-        <span class="lid-glint" aria-hidden="true"></span>
-        <span class="lid-front" aria-hidden="true"></span>
-      </button>
+      <i class="arm-rest"></i>
+      <i class="arm-base"><i></i></i>
+      {{/* weight, tube and headshell all ride the one rotation about the pivot */}}
+      <div class="tonearm" id="tonearm">
+        <i class="arm-rod"><i class="arm-weight"></i><i class="arm-head"></i></i>
+      </div>
+
+      <div class="panel">
+        <span class="panel-key"></span>
+        <span class="panel-speed mono"><i class="on"></i>33<i></i>45</span>
+      </div>
+      <span class="deck-mark mono">BDATHE</span>
     </div>
 
-    <div class="machine-hud">
-      <span class="hud-hint mono" id="hudHint"></span>
+    {{/* 读数 — a card laid against the machine's corner */}}
+    <div class="vcard">
+      <span class="hud-hint mono" id="hudHint">唱机空着</span>
       <div class="hud-now" id="hudNow">
-        <strong id="vTitle">—</strong>
-        <span id="vArtist">当前唱片机中无唱片</span>
+        <strong id="vTitle">从右边抽一张</strong>
+        <span id="vArtist">点一下，或拖到唱盘上</span>
       </div>
-      <div class="hud-bar" id="vScrub"><i></i></div>
-      <div class="hud-time mono"><span id="vPos">0:00</span><span id="vDur">--:--</span></div>
+      {{/* 进度条和「这一张说什么」占同一格：指着某张唱片时，卡片先预告它，
+           那一行短评就顶替进度条出来，卡片的高度一点不变。 */}}
+      <div class="hud-mid">
+        <div class="hud-track">
+          <div class="hud-bar" id="vScrub"><i></i></div>
+          <div class="hud-time mono"><span id="vPos">0:00</span><span id="vDur">--:--</span></div>
+        </div>
+        <p class="hud-say" id="vSay"></p>
+      </div>
       <div class="hud-ctl">
         <button type="button" class="vbtn" id="vPlay" aria-label="播放/暂停" disabled>▶</button>
         <button type="button" class="vbtn" id="vEject" aria-label="取出唱片" disabled>⏏</button>
@@ -114,18 +112,21 @@
     <audio id="vAudio" preload="auto" playsinline></audio>
   </div>
 
-  {{/* ── 唱片架 ──────────────────────────────────────────
-       Leaning in a rack the way records actually sit. Pulling one halfway
-       out of its sleeve on hover is the affordance — it says these come
-       out, before you have clicked anything. */}}
+  {{/* ── 一摞唱片 ────────────────────────────────────────
+       Loose on the desk to the right, each a little crooked (from its id, so
+       it lies the same way every build), with a 题签 stuck to its corner the
+       way the 笺 on the 诗 page carry theirs. On hover the record slides
+       half out of its sleeve — the affordance that says these come out. */}}
   <div class="rack-wrap">
-    <div class="rack-rule mono"><span>唱片架</span><i>{{ len $items }} 张</i></div>
+    <div class="rack-rule mono"><span>唱片</span></div>
 
     <div class="rack" id="rack" role="list">
       {{ range $items }}
+        {{ $h := hash.FNV32a (printf "%s|%s" .id .title) }}
         <div class="rec" role="listitem" data-i="{{ .i }}" data-id="{{ .id }}"
              data-title="{{ .title }}" data-artist="{{ .artist }}"
-             data-cover="{{ .cover2x }}" style="--tone:{{ .tone }}">
+             data-cover="{{ .cover2x }}"
+             style="--tone:{{ .tone }}; --r:{{ sub (mod $h 9) 4 }}deg; --dy:{{ mod (div $h 9) 10 }}px">
           <button type="button" class="rec-grab" aria-label="把《{{ .title }}》放上唱机">
             {{/* the disc peeking out from behind the sleeve */}}
             <span class="rec-disc" aria-hidden="true"><i></i></span>
@@ -136,13 +137,14 @@
               {{ else }}
                 <span class="rec-blank"></span>
               {{ end }}
-              <span class="rec-spine" aria-hidden="true"></span>
             </span>
           </button>
 
+          {{/* 题签：只写括号前的名字，全名在卡片上 */}}
           <div class="rec-meta">
             <b>{{ .title }}</b>
-            <i>{{ .artist }}</i>
+            <i>{{ replaceRE `\s*[(（].*$` "" .artist }}</i>
+            <em>在唱机上</em>
           </div>
         </div>
       {{ end }}

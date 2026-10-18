@@ -7,11 +7,13 @@
    free since the grab handle is a real button.
 
    The click path is one ritual, written so each beat is a thing a hand would
-   actually do: the disc comes out of its sleeve, the lid opens, the record
-   travels through the air and is lowered onto the spindle from above, the
-   lid shuts, the platter comes up to speed, and only then does the arm drop
-   and the music start. Overlap the mechanical moves and it reads as a
-   machine being operated; play them as a progress bar and the object dies.
+   actually do: the disc comes out of its sleeve, the record travels through
+   the air and is lowered onto the spindle from above, its sleeve is laid
+   down by the machine, the platter comes up to speed as the arm swings over
+   and is set down, and the music starts. The beats hand over to each other
+   rather than wait for each other to finish — it used to be strictly one
+   after another, and the pauses between them read as a machine thinking,
+   not a hand moving.
 
    Playback is a vendored 30s iTunes preview (same-origin <audio>). The
    platter and arm follow currentTime. Full tracks stay as outbound links.
@@ -33,7 +35,7 @@
 
   var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  var lid      = document.getElementById('lid');
+  var sleeve   = document.getElementById('vsleeve');
   var platter  = stage.querySelector('.platter');
   var machine  = document.getElementById('machine');
   var vdisc    = document.getElementById('vdisc');
@@ -47,6 +49,7 @@
   var scrub    = document.getElementById('vScrub');
   var btnPlay  = document.getElementById('vPlay');
   var btnEject = document.getElementById('vEject');
+  var elSay    = document.getElementById('vSay');
 
   var note      = document.getElementById('vnote');
   var noteMeta  = document.getElementById('vnoteMeta');
@@ -98,8 +101,51 @@
     });
   }
 
+  /* An empty machine says so on the status line, and the two lines under it
+     say what to do about it — including the drag, which nothing else on the
+     page would ever tell you about. */
+  var IDLE_TITLE = '从右边抽一张', IDLE_SUB = '点一下，或拖到唱盘上';
+  function idle() {
+    hud(IDLE_TITLE, IDLE_SUB);
+  }
+
+  /* While a record on the rack is being pointed at, the readout is showing
+     that one instead (see peek). Anything the machine wants to say in the
+     meantime is kept and put back when the pointer leaves. */
+  var held = null;
+  function hud(title, sub) {
+    if (held) { held.title = title; held.sub = sub; return; }
+    elTitle.textContent = title;
+    elArtist.textContent = sub;
+  }
   function hint(msg) {
+    msg = msg || (seated === null ? '唱机空着' : '');
+    if (held) { held.hint = msg; return; }
     if (hudHint) hudHint.textContent = msg;
+  }
+
+  /* ── 预告 ─────────────────────────────────────────────────
+     Pointing at a sleeve reads it out — full title, full artist, its line —
+     before anything is committed. The short line takes the progress bar's
+     place, so the readout keeps its height and nothing below it moves. */
+  function peek(i) {
+    if (busy || i === seated || !items[i]) { unpeek(); return; }
+    var t = items[i];
+    if (!held) held = { title: elTitle.textContent, sub: elArtist.textContent, hint: hudHint.textContent };
+    elTitle.textContent = t.title;
+    elArtist.textContent = t.artist + (t.album ? ' · ' + t.album : '');
+    hudHint.textContent = seated === null ? '点一下放上唱机' : '点一下换这张';
+    if (elSay) { elSay.textContent = t.summary || ''; elSay.title = t.summary || ''; }
+    stage.classList.add('peek');
+  }
+  function unpeek() {
+    if (!held) return;
+    var h = held;
+    held = null;
+    stage.classList.remove('peek');
+    elTitle.textContent = h.title;
+    elArtist.textContent = h.sub;
+    hudHint.textContent = h.hint;
   }
 
   /* Every animation gets the same latch: whichever of 'finish' and a backstop
@@ -117,44 +163,67 @@
   }
 
   /* ── the platter turns ────────────────────────────────────
-     Angle accumulated by hand rather than a CSS animation, so it can spin up
-     and coast down instead of snapping. The loop is idle whenever the record
-     is still.                                                             */
-  var speed = 0, target = 0, deg = 0, raf = null, last = 0;
+     The turning is a Web Animation — a revolution every 1.8s, 200°/s, which
+     is 33⅓ near enough — so the compositor runs it and nothing on the main
+     thread can make the record hitch. Script only touches its playbackRate,
+     and only while it is spinning up or coasting down; at speed, or at rest,
+     there is no loop at all.                                              */
+  var turn = null, speed = 0, target = 0, raf = null, last = 0;
 
-  function frame(t) {
+  function turning() {
+    if (!turn) {
+      turn = vdisc.animate(
+        [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+        { duration: 1800, iterations: Infinity }
+      );
+      turn.pause();
+    }
+    return turn;
+  }
+  function ramp(t) {
     var dt = last ? Math.min(64, t - last) : 16;
     last = t;
     speed += (target - speed) * (1 - Math.exp(-dt / 280));
-    deg = (deg + speed * (dt / 1000) * 200) % 360;   // 200°/s ≈ 33⅓ rpm
-    vdisc.style.setProperty('--deg', deg.toFixed(2) + 'deg');
-    if (target > 0 || speed > 0.003) raf = requestAnimationFrame(frame);
-    else { raf = null; last = 0; speed = 0; }
+    if (Math.abs(target - speed) < 0.004) speed = target;
+    turn.updatePlaybackRate(speed);
+    if (speed !== target) { raf = requestAnimationFrame(ramp); return; }
+    raf = null;
+    last = 0;
+    if (speed === 0) turn.pause();
   }
   function spin(on) {
     target = on ? 1 : 0;
     stage.classList.toggle('spinning', on);
     if (still) return;
-    if (raf === null && (target > 0 || speed > 0.003)) raf = requestAnimationFrame(frame);
+    var a = turning();
+    if (on && a.playState !== 'running') { a.updatePlaybackRate(speed); a.play(); }
+    if (raf === null && speed !== target) raf = requestAnimationFrame(ramp);
+  }
+  /* a new record starts square to the spindle, not at the last one's angle */
+  function stopTurn() {
+    if (raf !== null) cancelAnimationFrame(raf);
+    raf = null;
+    last = 0;
+    speed = 0;
+    target = 0;
+    if (turn) { turn.cancel(); turn = null; }
   }
 
-  /* ── the lid ── */
-  function setLid(open) {
-    stage.dataset.lid = open ? 'open' : 'closed';
-    lid.setAttribute('aria-pressed', String(open));
-  }
-  lid.addEventListener('click', function () {
-    if (busy) return;
-    setLid(stage.dataset.lid !== 'open');
-  });
-
+  /* The arm is lifted for as long as it swings (.arm-up), and set down at
+     the end of it; .arm-cue is the slow swing itself, which then gives way
+     to the short transition that tracks the playing clip. */
+  var armTimer = null;
   function setArm(on) {
-    stage.classList.add('arm-cue');
+    stage.classList.add('arm-cue', 'arm-up');
     stage.dataset.arm = on ? 'on' : 'parked';
+    clearTimeout(armTimer);
+    armTimer = setTimeout(function () {
+      stage.classList.remove('arm-cue', 'arm-up');
+    }, ARM_SWING);
   }
 
   function showMachine() {
-    var deck = stage.querySelector('.deck3d') || machine;
+    var deck = stage.querySelector('.deck') || machine;
     if (!deck) return false;
     var box = deck.getBoundingClientRect();
     if (box.top >= 64 && box.bottom <= innerHeight - 48) return false;
@@ -211,14 +280,23 @@
     return { left: p.left, top: p.top, width: p.width, height: p.height, size: p.width };
   }
 
-  var LIFT = 280, OPEN_READY = 440, FLIGHT = 980, SETTLE = 220;
-  var LID_DOWN = 360, ARM_DROP = 560, ARM_PARK = 360, HOME = 640;
+  /* LIFT       the disc sliding out of its sleeve (rec.launching, 280ms in CSS)
+     FLIGHT     rack → spindle
+     SETTLE     the little give as it lands
+     SPIN_AT    after landing: the platter starts
+     ARM_AT     after landing: the arm starts its swing
+     ARM_SWING  the swing (.arm-cue, 540ms in CSS), then ARM_SET to set it down
+     ARM_PARK   on the way off: how long the arm has to lift and clear
+     HOME       spindle → sleeve; a swap launches the next one before it lands */
+  var LIFT = 240, FLIGHT = 760, SETTLE = 220, SPIN_AT = 120, ARM_AT = 140;
+  var ARM_SWING = 540, ARM_SET = 180, ARM_PARK = 300, HOME = 600;
 
   /* ── the placing animation ────────────────────────────────
      A cubic, not a flat lerp: the record lifts off the shelf, travels, then
      is lowered onto the spindle from above — the last third is a place, not
-     a slide. It stays closer to a circle in the air and only lies down into
-     the platter's already-measured ellipse as it descends.
+     a slide. (The squash toward the destination's height at the end is left
+     over from a platter seen in perspective; seen from above, the platter is
+     a circle and it does nothing.)
 
      First and last frames match the elements they replace, so the hand-off
      is a swap of two identical pictures rather than a jump.              */
@@ -316,16 +394,18 @@
     ended = false;
     recs[i].classList.add('seated');
 
-    deg = 0;
-    speed = 0;
-    vdisc.style.setProperty('--deg', '0deg');
+    stopTurn();
 
     if (t.cover2x) vlabel.alt = t.album || t.title;
     stage.dataset.state = 'loaded';
     stage.style.setProperty('--tone', t.tone);
+    if (sleeve) {
+      if (t.cover2x && sleeve.getAttribute('src') !== t.cover2x) sleeve.src = t.cover2x;
+      sleeve.alt = t.album || t.title;
+      sleeve.classList.toggle('on', !!t.cover2x);
+    }
 
-    elTitle.textContent = t.title;
-    elArtist.textContent = t.artist + (t.album ? ' · ' + t.album : '');
+    hud(t.title, t.artist + (t.album ? ' · ' + t.album : ''));
     progress(0, 0);
   }
 
@@ -333,8 +413,7 @@
     if (rec) rec.classList.remove('seated');
     seated = null;
     ended = false;
-    elTitle.textContent = '—';
-    elArtist.textContent = '当前唱片机中无唱片';
+    idle();
     hint('');
     btnPlay.disabled = true;
     btnEject.disabled = true;
@@ -343,6 +422,7 @@
     stage.dataset.state = 'empty';
     stage.dataset.arm = 'parked';
     stage.classList.remove('playing', 'spinning');
+    if (sleeve) sleeve.classList.remove('on');
     stopPreview();
   }
 
@@ -379,8 +459,11 @@
     startPreview();
   }
 
-  /* ── put the current record back on the shelf ── */
-  function putAway() {
+  /* ── put the current record back on the shelf ──
+     early: resolve once the record is most of the way home, so a swap can
+     start pulling the next one out while this one is still landing. Eject
+     waits for the whole trip. */
+  function putAway(early) {
     if (seated === null) return Promise.resolve();
     var i = seated, rec = recs[i];
 
@@ -396,42 +479,37 @@
 
     if (still) {
       finish();
-      setLid(true);
       return Promise.resolve();
     }
 
     hint('取下唱片…');
     setArm(false);
-    var opening = stage.dataset.lid !== 'open';
-    if (opening) setLid(true);
 
-    return wait(Math.max(opening ? OPEN_READY : 80, ARM_PARK))
+    return wait(ARM_PARK)
       .then(function () {
         var box = discBox();
         var to = rec.querySelector('.rec-sleeve').getBoundingClientRect();
         var cover = items[i].cover || items[i].cover2x;
         stage.classList.add('handoff');
-        stage.dataset.state = 'empty';
-        seated = null;
-        ended = false;
-        elTitle.textContent = '—';
-        elArtist.textContent = '当前唱片机中无唱片';
-        btnPlay.disabled = true;
-        btnEject.disabled = true;
-        progress(0, 0);
-        return flight(box, to, cover, true).then(function (f) {
+        /* the machine is empty from the moment the record leaves it; only
+           the sleeve keeps its .seated (its own disc hidden) until the
+           flyer arrives to fill it */
+        clearMachine(null);
+        hint('取下唱片…');
+        var home = flight(box, to, cover, true).then(function (f) {
           if (f) f.remove();
-          clearMachine(rec);
-          stage.classList.remove('arm-cue', 'handoff');
+          rec.classList.remove('seated');
+          stage.classList.remove('handoff');
+          if (!busy) hint('');
         });
+        return early ? Promise.race([home, wait(HOME * 0.55)]) : home;
       });
   }
 
-  /* ── 开盖 → 放入 → 合盖 → 转盘 → 落臂 → 出声 ───────────── */
+  /* ── 抽出 → 放上 → 转盘 → 落臂 → 出声 ───────────────── */
   function place(i, fromRect) {
     if (still) {
       if (items[i].cover2x) vlabel.src = items[i].cover2x;
-      setLid(true);
       seat(i);
       setArm(true);
       spin(true);
@@ -450,15 +528,18 @@
       warmCover(travelCover),
       warmCover(items[i].cover2x)
     ]);
-    if (items[i].cover2x) vlabel.src = items[i].cover2x;
+    /* label and sleeve take their picture now, while the record is still in
+       the pile, so neither is decoded in the frame the record lands in */
+    if (items[i].cover2x) {
+      vlabel.src = items[i].cover2x;
+      if (sleeve && !sleeve.classList.contains('on')) sleeve.src = items[i].cover2x;
+    }
 
-    var opening = stage.dataset.lid !== 'open';
-    if (opening) setLid(true);
     if (!fromRect) rec.classList.add('launching');
     hint('抽出唱片…');
 
     return Promise.all([
-      wait(Math.max(opening ? OPEN_READY : 0, fromRect ? 0 : LIFT)),
+      wait(fromRect ? 0 : LIFT),
       coverReady
     ])
       .then(function () {
@@ -481,24 +562,20 @@
         });
       })
       .then(function () {
-        if (!still) {
-          vdisc.animate(
-            [{ scale: '1.04' }, { scale: '0.992' }, { scale: '1' }],
-            { duration: SETTLE, easing: 'cubic-bezier(.2,.7,.3,1)' }
-          );
-        }
-        hint('合上机盖…');
-        setLid(false);
-        return wait(still ? 0 : Math.max(SETTLE, LID_DOWN));
+        /* landed: the sleeve is laid down, the platter starts, and the arm
+           sets off — overlapping, the way two hands would do it */
+        vdisc.animate(
+          [{ scale: '1.04' }, { scale: '0.992' }, { scale: '1' }],
+          { duration: SETTLE, easing: 'cubic-bezier(.2,.7,.3,1)' }
+        );
+        setTimeout(function () { hint('唱机启动…'); spin(true); }, SPIN_AT);
+        return wait(ARM_AT);
       })
       .then(function () {
-        hint('唱机启动…');
-        spin(true);
         setArm(true);
-        return wait(still ? 0 : ARM_DROP);
+        return wait(ARM_SWING + ARM_SET);
       })
       .then(function () {
-        stage.classList.remove('arm-cue');
         btnPlay.disabled = !items[i].preview;
         btnEject.disabled = false;
         hint(items[i].preview ? '正在播放' : '');
@@ -511,6 +588,7 @@
     if (busy || !items[i] || !items[i].id) return Promise.resolve();
     if (seated === i) return Promise.resolve();
 
+    unpeek();
     busy = true;
     /* Muted play on the same tap, so unmute after the arm drops is still
        a continuation of the gesture rather than a cold play(). */
@@ -518,7 +596,7 @@
     var scrolled = showMachine();
 
     var chain = (scrolled ? nextFrame() : Promise.resolve())
-      .then(function () { return seated !== null ? putAway() : Promise.resolve(); });
+      .then(function () { return seated !== null ? putAway(true) : Promise.resolve(); });
     return chain
       .then(function () { return place(i, fromRect); })
       .then(function () { busy = false; })
@@ -532,7 +610,7 @@
   function eject() {
     if (seated === null || busy) return Promise.resolve();
     busy = true;
-    return putAway()
+    return putAway(false)
       .then(function () {
         busy = false;
         hint('');
@@ -644,6 +722,12 @@
     };
     grab.addEventListener('pointerenter', warm, { once: true, passive: true });
     grab.addEventListener('focus', warm, { once: true, passive: true });
+    grab.addEventListener('pointerenter', function (e) {
+      if (e.pointerType === 'mouse') peek(i);
+    }, { passive: true });
+    grab.addEventListener('focus', function () { peek(i); });
+    grab.addEventListener('pointerleave', unpeek, { passive: true });
+    grab.addEventListener('blur', unpeek);
     grab.addEventListener('pointerdown', function () {
       armPreview(items[i].preview);
     }, { passive: true });
@@ -668,10 +752,10 @@
         if (!moved) {
           if (Math.abs(ev.clientX - e.clientX) + Math.abs(ev.clientY - e.clientY) < 6) return;
           moved = true;
+          unpeek();
           grab.dataset.dragged = '1';
           rec.classList.add('dragging');
           stage.classList.add('carrying');
-          if (stage.dataset.lid !== 'open') setLid(true);
           f = flyer(size, travelCover);
         }
         f.style.transform = 'translate(' + (ev.clientX - size / 2) + 'px,' +
@@ -738,6 +822,16 @@
     }
   });
 
-  setLid(false);
+  /* ── 架底的淡出 ──
+     The rack fades out at the bottom for as long as there is more below;
+     the last row in view, or a rack that never needed to scroll, is drawn
+     plain. */
+  var atEnd = function () {
+    rack.classList.toggle('at-end', rack.scrollTop + rack.clientHeight >= rack.scrollHeight - 2);
+  };
+  rack.addEventListener('scroll', atEnd, { passive: true });
+  addEventListener('resize', atEnd);
+  atEnd();
+
   progress(0, 0);
 })();

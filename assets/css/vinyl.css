@@ -1,119 +1,122 @@
 /* ═══════════════════════════════════════════════════════════
-   音 · vinyl — 掀盖 / 抽片 / 上盘
+   音 · vinyl — 案头 / 抽片 / 上盘
    Loaded only by layouts/vinyl/list.html, on top of main.css.
 
-   The machine is one 3D scene: .deck3d holds the tilted plane, everything
-   on the plinth lives in that plane (so the platter is drawn as a circle and
-   comes out an ellipse for free), and the lid is a second plane hinged at the
-   back edge. Nothing here is an image — it is all borders and gradients, the
-   same way the desk on the home page is.
+   Seen from straight above. The machine is a matte slab lying on the desk,
+   turned a couple of degrees off square the way a thing put down by hand
+   is; the light is up and to the left, so everything that stands off the
+   desk — the slab, the arm, the sleeves, the card — throws its shadow down
+   and to the right, and the vinyl's sheen sits still while the record
+   turns under it. Nothing is in perspective: the platter is a circle, and a
+   record lands on it as one.
 
    --tone is the record's own cover colour. This collection runs warm and
    the palette does not, so it only ever appears mixed hard into a neutral.
    ═══════════════════════════════════════════════════════════ */
 
 .vstage {
+  --body: #e9ecef;
+  --paper: #fffffe;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 232px;
-  gap: 2.6rem;
+  grid-template-columns: minmax(0, 1fr) 272px;
+  gap: 3rem;
   align-items: start;
   margin: 0 0 4rem;
   padding-top: 2.6rem;
 }
 
 /* ─────────────────────────────────────────────────────────
-   唱机
+   案头：封套、唱机、卡片
    ───────────────────────────────────────────────────────── */
 
-.machine {
-  perspective: 1300px;
-  perspective-origin: 50% 34%;
-  padding: 1rem 0 0;
-}
-
-.deck3d {
+/* everything on the desk is placed in this box's pixels; at 720 wide it is
+   exactly the column the stage leaves it */
+.vdesk {
   position: relative;
-  width: 100%;
-  max-width: 470px;
-  height: 336px;
-  margin: 0 auto;
-  transform: rotateX(50deg);
-  transform-style: preserve-3d;
-  /* Settle the viewpoint before a record starts flying. Keeping this at the
-     old 720ms made the moving platter a moving animation target as well. */
-  transition: transform 220ms var(--soft);
+  width: 720px;
+  height: 640px;
 }
-/* with the lid up you are looking into the machine, so the whole scene
-   stands a little more upright */
-.vstage[data-lid="open"] .deck3d { transform: rotateX(43deg); }
 
-.plinth {
+/* the sleeve of what is playing, tucked under the machine's corner */
+.vsleeve {
   position: absolute;
-  inset: 0;
-  border-radius: 8px;
-  background: linear-gradient(160deg, #f3f5f8, #e7eaee);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 40px 60px -30px rgba(40, 48, 58, 0.45);
-  transform-style: preserve-3d;
+  left: 22px;
+  top: 6px;
+  width: 300px;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(27,36,48,.12), 0 14px 26px -12px rgba(27,36,48,.3);
+  transform: translate(-14px, 18px) rotate(-14deg);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 260ms var(--soft), transform 420ms var(--out), visibility 0s 420ms;
 }
-/* the front edge, so the box has thickness rather than being a decal */
-.plinth-face {
+.vsleeve.on {
+  transform: rotate(-8deg);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 260ms var(--soft), transform 520ms var(--out), visibility 0s;
+}
+
+.deck {
   position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 26px;
-  border-radius: 0 0 8px 8px;
-  background: linear-gradient(#dfe3e9, #cdd3da);
-  transform-origin: 50% 100%;
-  transform: rotateX(-90deg);
+  left: 92px;
+  top: 64px;
+  width: 580px;
+  height: 460px;
+  border-radius: 14px;
+  background: var(--body);
+  transform: rotate(-2deg);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    inset 0 0 0 1px rgba(27,36,48,.08),
+    0 1px 2px rgba(27,36,48,.1),
+    0 26px 44px -18px rgba(27,36,48,.34);
 }
 
 /* ── the platter ── */
 .platter {
   position: absolute;
-  left: 6.5%;
-  top: 9%;
-  width: 248px;
-  height: 248px;
+  left: 34px;
+  top: 45px;
+  width: 350px;
+  height: 350px;
   border-radius: 50%;
-  /* brushed aluminium — the conic sweep is what reads as machined metal */
-  background:
-    repeating-conic-gradient(from 0deg, #dce0e5 0deg 1.6deg, #e6e9ed 1.6deg 3.2deg);
-  box-shadow:
-    0 0 0 1px #ced4db,
-    0 2px 5px rgba(40, 48, 58, 0.16) inset;
+  background: #d4d9df;
+  box-shadow: inset 0 0 0 1px rgba(27,36,48,.1), 0 1px 0 rgba(255,255,255,.8);
   display: grid;
   place-items: center;
+  transition: box-shadow var(--mid) var(--soft);
 }
-.platter-mat {
+/* the strobe dots round the rim */
+.strobe {
   position: absolute;
-  inset: 7%;
+  inset: 6px;
   border-radius: 50%;
-  background: radial-gradient(circle, #d3d8de, #c7ccd4);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  border: 2px dotted #b4bcc5;
 }
-
-.spindle {
+/* where the spindle is, so an empty platter still reads as one */
+.platter::after {
+  content: '';
   position: absolute;
-  width: 7px; height: 7px;
+  width: 9px; height: 9px;
   border-radius: 50%;
-  background: linear-gradient(#f2f4f6, #c9ced5);
-  box-shadow: 0 0 0 1px #b9bfc7;
-  z-index: 4;
+  background: radial-gradient(circle at 35% 35%, #f6f7f9, #aab2bb);
 }
 
 /* ── the record ── */
 .vdisc {
   position: absolute;
-  inset: 4%;
+  inset: 15px;
   border-radius: 50%;
-  /* the one dark object in the whole page */
-  background: repeating-radial-gradient(circle, #3d424a 0 1px, #464c54 1px, #3a3f47 2px);
-  box-shadow: 0 3px 10px rgba(28, 34, 42, 0.4);
+  /* the one dark object on the page */
+  background: #1e242c;
+  box-shadow: 0 2px 4px rgba(15,20,26,.3);
   display: grid;
   place-items: center;
-  z-index: 3;
-  transform: rotate(var(--deg, 0deg));
+  z-index: 2;
+  /* turned by a Web Animation in vinyl.js (see spin) */
   opacity: 0;
   visibility: hidden;
   transition: opacity 200ms var(--soft), visibility 200ms;
@@ -125,228 +128,258 @@
 
 .vdisc-grooves {
   position: absolute;
-  inset: 9%;
+  inset: 6%;
   border-radius: 50%;
-  background: repeating-radial-gradient(circle, rgba(255,255,255,.055) 0 1px, transparent 1px, transparent 3px);
+  background: repeating-radial-gradient(circle, rgba(255,255,255,.055) 0 1px, transparent 1px 3px);
 }
 .vdisc-label {
   /* percentages, not aspect-ratio: <img> is a replaced element and would keep
-     its intrinsic size against inset, and a ratio does not survive the grid
-     row's stretch either */
+     its intrinsic size against inset */
   position: relative;
-  width: 38%;
-  height: 38%;
+  width: 35%;
+  height: 35%;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.3);
   background: var(--surface);
 }
 .vdisc-hole {
   position: absolute;
-  width: 3.2%; height: 3.2%;
+  width: 9px; height: 9px;
   border-radius: 50%;
-  background: #eceef1;
+  background: radial-gradient(circle at 35% 35%, #f6f7f9, #aab2bb);
   z-index: 2;
 }
+/* two soft highlights where the lamp catches the grooves; a sibling of the
+   record rather than part of it, so they stay put while it turns */
+.vsheen {
+  position: absolute;
+  inset: 19px;
+  border-radius: 50%;
+  background: conic-gradient(from 300deg, transparent 0deg, rgba(255,255,255,.13) 16deg, transparent 38deg,
+                             transparent 180deg, rgba(255,255,255,.09) 198deg, transparent 220deg);
+  -webkit-mask-image: radial-gradient(circle, transparent 0 19%, #000 19.5%);
+          mask-image: radial-gradient(circle, transparent 0 19%, #000 19.5%);
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 200ms var(--soft);
+}
+.vstage[data-state="loaded"] .vsheen { opacity: 1; }
 
-/* ── the arm ── */
 /* ── the arm ──────────────────────────────────────────────
-   Geometry, rather than nudged-until-it-looked-right, because an arm that
-   misses the record by 100px reads as a mistake immediately.
+   Solved, not nudged. In the deck's own pixels the record's centre is
+   (209, 220) and its grooves run from r ≈ 150 out at the rim to r ≈ 60 at
+   the label. The pivot sits at (488, 90), D ≈ 308 from the centre, and the
+   stylus is L ≈ 248 out along the arm. Then:
+     · pointing at the centre is 155°, and reaches r = D − L ≈ 60, the label;
+     · the rim (r = 150) is 28.8° off that line, at 126°;
+     · straight down, 90°, the arm lies on its rest, clear of the platter.
+   So: parked at 90°, cued onto the rim at 126°, and carried 26° further in
+   over the length of the clip. One rotation about the pivot carries the
+   weight, the tube and the headshell together. */
+.arm-base {
+  position: absolute;
+  left: 458px;
+  top: 60px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#cfd4da 0deg 4deg, #e3e6ea 4deg 8deg);
+  box-shadow: 3px 5px 8px rgba(27,36,48,.22), inset 0 0 0 1px rgba(27,36,48,.12);
+  display: grid;
+  place-items: center;
+}
+.arm-base i {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #fbfcfd, #c3c9d0);
+}
+.arm-rest {
+  position: absolute;
+  left: 476px;
+  top: 248px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #f3f5f7, #c3c9d0);
+  box-shadow: 2px 3px 4px rgba(27,36,48,.22);
+}
 
-   The plinth is 470×336 and the platter is 248 at left 6.5% / top 9%, so the
-   record's centre sits at (154, 154) with a radius of ~114. Putting the
-   pivot at (348, 50) leaves D ≈ 220 from pivot to centre; an arm of 175 then
-   reaches a minimum radius of D − L ≈ 45 — the label — when it points
-   straight at the centre, and the rim (r ≈ 110) at about 30° off that line.
-   Hence: rod at −28° so that it aims at the centre when the arm is at 0, and
-   a sweep of 30°→0° across the record.
-
-   Every number above is in the plinth's own pixels, so the narrow-screen
-   rule scales the whole scene rather than re-tuning any of them. */
 .tonearm {
   position: absolute;
-  right: 26%;
-  top: 15%;
-  width: 175px;
-  height: 4px;
-  transform-origin: 100% 50%;
-  transform: rotate(58deg);        /* parked, well clear of the record */
-  /* Short while tracking a playing disc; the long swing is .arm-cue. */
+  left: 488px;
+  top: 90px;
+  width: 0;
+  height: 0;
+  transform: rotate(90deg);          /* parked, on its rest */
+  /* Short while tracking a playing clip; the long swing is .arm-cue. */
   transition: transform 280ms linear;
   z-index: 5;
 }
 .vstage[data-arm="on"] .tonearm {
-  transform: rotate(calc(30deg - var(--p, 0) * 30deg));
+  transform: rotate(calc(126deg + var(--p, 0) * 26deg));
 }
 .vstage.arm-cue .tonearm {
-  transition: transform 720ms var(--soft);
+  transition: transform 540ms var(--soft);
 }
-.arm-base {
-  position: absolute;
-  top: -12px; right: -14px;
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(150deg, #eef0f3, #d2d7dd);
-  box-shadow: 0 0 0 1px #c2c8cf, 0 3px 6px rgba(40,48,58,.2);
-}
-/* Negative, so the free end drops toward the record: rotating a left-pointing
-   bar clockwise about its right end lifts the tip away from the platter, and
-   the arm then reads as a lollipop pointing at nothing. */
 .arm-rod {
   position: absolute;
-  inset: 0;
-  border-radius: 3px;
-  background: linear-gradient(270deg, #d7dbe0, #b0b6bd);
-  box-shadow: 0 1px 2px rgba(40,48,58,.22);
-  transform-origin: right center;
-  transform: rotate(-28deg);
+  left: 0;
+  top: -3.5px;
+  width: 228px;
+  height: 7px;
+  border-radius: 4px;
+  background: linear-gradient(#fbfcfd, #b3bac3);
+  box-shadow: 4px 6px 4px rgba(27,36,48,.2);
+}
+.arm-weight {
+  position: absolute;
+  left: -54px;
+  top: -9px;
+  width: 38px;
+  height: 25px;
+  border-radius: 5px;
+  background: linear-gradient(#a3abb5, #4e5661 55%, #7d8691);
+  box-shadow: 4px 6px 5px rgba(27,36,48,.22);
 }
 .arm-head {
   position: absolute;
-  left: -8px; top: -4px;
-  width: 22px; height: 12px;
-  border-radius: 2px;
-  background: linear-gradient(#b8bec5, #979ea6);
-  box-shadow: 0 1px 3px rgba(40,48,58,.25);
+  left: 212px;
+  top: -7px;
+  width: 32px;
+  height: 20px;
+  border-radius: 3px;
+  background: linear-gradient(#2c333c, #11161c);
+  box-shadow: 4px 6px 5px rgba(27,36,48,.25);
+  transform-origin: 0 50%;
+  transform: rotate(-22deg);
 }
+/* 抬臂 / 落臂. Lifted while it swings, the arm stands further off the deck,
+   so its shadow falls further away and goes soft; when .arm-up comes off the
+   shadow pulls in under it, which reads as the stylus being set down. */
+.arm-rod, .arm-head, .arm-weight { transition: box-shadow 180ms var(--soft); }
+.vstage.arm-up .arm-rod    { box-shadow: 12px 16px 10px rgba(27,36,48,.14); }
+.vstage.arm-up .arm-head   { box-shadow: 12px 16px 10px rgba(27,36,48,.18); }
+.vstage.arm-up .arm-weight { box-shadow: 10px 14px 9px rgba(27,36,48,.16); }
 
-/* ── the speed panel ── */
+/* ── the panel ── */
 .panel {
   position: absolute;
-  left: 7%;
-  bottom: 7%;
+  left: 34px;
+  top: 410px;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 22px;
 }
-.panel-dot {
-  width: 8px; height: 8px;
+.panel-key {
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: #cfd4da;
-  box-shadow: 0 0 0 1px #bfc5cc;
-  transition: background var(--mid) var(--soft), box-shadow var(--mid) var(--soft);
+  background: radial-gradient(circle at 38% 32%, #fbfcfd, #cfd5db);
+  box-shadow: 0 0 0 2px #c3c9d0, 2px 3px 4px rgba(27,36,48,.2);
+  transition: box-shadow var(--mid) var(--soft);
 }
-.vstage.playing .panel-dot,
-.vstage.spinning .panel-dot {
-  background: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-deep), 0 0 7px var(--accent);
+.vstage.spinning .panel-key { box-shadow: 0 0 0 2px var(--accent), 2px 3px 4px rgba(27,36,48,.2); }
+.panel-speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  color: var(--muted);
 }
-.vstage.spinning .platter {
-  box-shadow:
-    0 0 0 1px #ced4db,
-    0 2px 5px rgba(40, 48, 58, 0.16) inset,
-    0 0 0 6px color-mix(in oklab, var(--tone, var(--accent)) 14%, transparent);
+.panel-speed i {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #c3c9d0;
 }
-.panel-txt { font-size: 0.54rem; letter-spacing: 0.14em; color: #9aa1a9; }
-
-/* ── the lid ──────────────────────────────────────────────
-   Hinged on its back edge — transform-origin 50% 0% in the plinth's own
-   plane — and floated above the deck so it clears the arm when it shuts. */
-.lid {
+.panel-speed i:nth-of-type(2) { margin-left: 6px; }
+.vstage.spinning .panel-speed i.on { background: var(--accent); }
+.deck-mark {
   position: absolute;
-  inset: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  transform-origin: 50% 0%;
-  transform: translateZ(42px) rotateX(0deg);
-  transform-style: preserve-3d;
-  /* Closing: decelerating, and a touch slower than it opened — a lid falls
-     under its own weight and meets the plinth, it does not snap shut. */
-  transition: transform 600ms var(--soft);
-  z-index: 8;
-}
-/* Opening takes the site's spring, so the lid swings a little past 76° and
-   settles back. A plain ease reads as a panel being redrawn at a new angle;
-   the overshoot is what gives it a hinge and a mass. The transition that
-   runs is the one declared on the state being entered, so the two
-   directions can differ without any JS. */
-.vstage[data-lid="open"] .lid {
-  transform: translateZ(42px) rotateX(-76deg);
-  transition: transform 660ms var(--spring);
+  right: 30px;
+  top: 420px;
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: #7a848f;
 }
 
-/* Held deliberately thin. At 36% white the closed lid washed the record out
-   almost completely — which is not what looking through acrylic is like, and
-   it hid the one object on this page worth looking at. The frame and the
-   glint carry the material; the pane itself barely tints. */
-.lid-glass {
-  position: absolute;
-  inset: 0;
-  border-radius: 8px;
-  background: linear-gradient(150deg, rgba(255,255,255,.17), rgba(226,233,240,.07) 46%, rgba(255,255,255,.13));
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.75),
-    0 0 0 2px rgba(180, 189, 199, 0.35),
-    0 16px 30px -18px rgba(40, 48, 58, 0.5);
-}
-/* the specular streak is most of what says "acrylic" rather than "grey box" */
-.lid-glint {
-  position: absolute;
-  inset: 0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.lid-glint::after {
-  content: '';
-  position: absolute;
-  top: -60%; left: -20%;
-  width: 30%; height: 220%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.42), transparent);
-  transform: rotate(18deg);
-  transition: transform var(--vslow) var(--soft);
-}
-.lid:hover .lid-glint::after { transform: rotate(18deg) translateX(38px); }
-/* the lid's own front lip, so it has thickness like the plinth */
-.lid-front {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 12px;
-  border-radius: 0 0 8px 8px;
-  background: linear-gradient(rgba(255,255,255,.5), rgba(214,221,229,.42));
-  box-shadow: 0 0 0 1px rgba(255,255,255,.6);
-  transform-origin: 50% 100%;
-  transform: rotateX(-90deg);
-}
+/* the platter lights up as a target while a record is in hand */
+.vstage.carrying .platter { box-shadow: 0 0 0 1px var(--accent), 0 0 0 8px var(--accent-soft); }
 
-/* ── the flat readout under the machine ── */
-.machine-hud {
+/* ── the card ─────────────────────────────────────────────
+   The readout, written on a card laid against the machine's corner. Every
+   line has a fixed place, so it never changes height between empty,
+   pointing-at and playing. */
+.vcard {
+  position: absolute;
+  left: 432px;
+  top: 440px;
+  width: 280px;
+  box-sizing: border-box;
+  padding: 1rem 1.15rem 0.6rem;
+  background: var(--paper);
+  border-radius: 3px;
+  transform: rotate(1.5deg);
+  box-shadow: 0 0 0 1px rgba(27,36,48,.07), 0 1px 2px rgba(27,36,48,.08), 0 14px 24px -12px rgba(27,36,48,.28);
   display: grid;
-  gap: 0.5rem;
-  max-width: 470px;
-  margin: 2.4rem auto 0;
+  gap: 0.35rem;
+  z-index: 6;
 }
+/* the status line keeps its height when it has nothing to say */
 .hud-hint {
+  min-height: 1.5em;
   font-size: 0.56rem;
   letter-spacing: 0.14em;
   color: var(--muted);
-  opacity: 0.8;
 }
-.hud-hint:empty { display: none; }
-.hud-now { display: grid; gap: 0.15rem; }
+.hud-now { display: grid; gap: 0.15rem; min-width: 0; }
 .hud-now strong {
   font-family: var(--serif);
-  font-size: 1.12rem;
+  font-size: 1.2rem;
+  line-height: 1.35;
   font-weight: 400;
   color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.hud-now span { font-size: 0.78rem; color: var(--muted); }
+.hud-now span {
+  font-size: 0.76rem;
+  color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* 进度条和预告的短评叠在同一格里，谁出现只看 .peek */
+.hud-mid { display: grid; margin-top: 0.4rem; }
+.hud-mid > * { grid-area: 1 / 1; transition: opacity var(--fast) var(--soft); }
+.hud-track { display: grid; gap: 0.45rem; align-content: start; }
+.hud-say {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  opacity: 0;
+}
+.vstage.peek .hud-track { opacity: 0; }
+.vstage.peek .hud-say { opacity: 1; }
 
 .hud-bar {
-  height: 3px;
-  border-radius: 999px;
+  height: 2px;
   background: var(--line);
   overflow: hidden;
 }
+/* scaleX rather than width, so following the clip is a compositor job and
+   never a relayout of the card four times a second */
 .hud-bar i {
   display: block;
   height: 100%;
-  width: calc(var(--p, 0) * 100%);
   background: var(--accent);
-  border-radius: 999px;
-  transition: width 320ms linear;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--p, 0));
+  transition: transform 320ms linear;
 }
 .hud-time {
   display: flex;
@@ -356,28 +389,26 @@
   color: var(--muted);
 }
 
-.hud-ctl { display: flex; gap: 0.5rem; margin-top: 0.2rem; }
+.hud-ctl { display: flex; gap: 0.2rem; margin-left: -0.6rem; }
 .vbtn {
-  width: 34px; height: 34px;
+  width: 44px; height: 44px;
   display: grid; place-items: center;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 50%;
-  background: var(--bg);
+  background: none;
   color: var(--muted);
   font-size: 0.78rem;
   cursor: pointer;
-  transition: color var(--fast) var(--soft), border-color var(--fast) var(--soft),
+  transition: color var(--fast) var(--soft), background var(--fast) var(--soft),
               transform var(--fast) var(--spring), opacity var(--fast) var(--soft);
 }
-.vbtn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.vbtn:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
 .vbtn:active:not(:disabled) { transform: scale(0.94); }
 .vbtn:disabled { opacity: 0.4; cursor: default; }
-.vstage.playing #vPlay { color: var(--accent); border-color: var(--accent); }
-
-
+.vstage.playing #vPlay { color: var(--accent); }
 
 /* ─────────────────────────────────────────────────────────
-   唱片架
+   一摞唱片
    ───────────────────────────────────────────────────────── */
 
 .rack-rule {
@@ -389,32 +420,39 @@
   color: var(--muted);
   padding-bottom: 0.6rem;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.4rem;
 }
-.rack-rule i { font-style: normal; opacity: 0.75; }
 
-/* Two columns of small sleeves rather than one of large ones. At full column
-   width a sleeve was wider than the platter, so a record placed on the
-   machine *shrank* on the way there — backwards, since it is travelling
-   toward the reader and toward the thing the page is about. Smaller sleeves
-   also put eight records on screen instead of two, which is what makes it
-   read as a rack. */
+/* As tall as the desk beside it, never taller: contain: size keeps the
+   pile's rows out of the stage's height, and the flex column lets it fill
+   whatever the desk decides. What does not fit scrolls, and the bottom edge
+   fades out until the last row is in view. */
+.rack-wrap { display: flex; flex-direction: column; align-self: stretch; }
 .rack {
+  flex: 1 1 auto;
+  contain: size;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.9rem 0.7rem;
-  max-height: 486px;
+  align-content: start;
+  gap: 1.6rem 1.1rem;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0.3rem 0.4rem 0.6rem 0;
+  /* room for a crooked sleeve's corner and a 题签 hanging off the left */
+  padding: 1.2rem 0.6rem 1.4rem 0.7rem;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
-  perspective: 700px;
+}
+.rack:not(.at-end) {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 44px), transparent);
+          mask-image: linear-gradient(to bottom, #000 calc(100% - 44px), transparent);
 }
 .rack::-webkit-scrollbar { width: 4px; }
 .rack::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
 
-.rec { position: relative; }
+.rec {
+  position: relative;
+  transform: translateY(var(--dy, 0px)) rotate(var(--r, 0deg));
+}
 
 .rec-grab {
   position: relative;
@@ -424,15 +462,12 @@
   border: 0;
   background: none;
   cursor: grab;
-  transform-style: preserve-3d;
-  /* leaning, the way records lean in a shelf */
-  transform: rotateY(15deg);
   transition: transform var(--slow) var(--spring), opacity var(--mid) var(--soft);
 }
-.rec-grab:hover, .rec-grab:focus-visible { transform: rotateY(4deg) translateX(-5px); }
+.rec-grab:hover, .rec-grab:focus-visible { transform: translateY(-4px); }
 .rec-grab:active { cursor: grabbing; }
 .rec.dragging .rec-grab { opacity: 0.35; }
-.rec.seated .rec-grab { opacity: 0.42; cursor: default; }
+.rec.seated .rec-grab { opacity: 0.32; cursor: default; transform: none; }
 
 .rec-sleeve {
   position: relative;
@@ -442,19 +477,17 @@
   border-radius: 2px;
   overflow: hidden;
   background: var(--surface);
-  box-shadow: -3px 4px 10px rgba(40, 48, 58, 0.16);
+  box-shadow: 0 1px 2px rgba(27,36,48,.12), 0 10px 18px -9px rgba(27,36,48,.3);
+  transition: box-shadow var(--slow) var(--soft);
+}
+.rec-grab:hover .rec-sleeve,
+.rec-grab:focus-visible .rec-sleeve {
+  box-shadow: 0 1px 2px rgba(27,36,48,.12), 0 18px 26px -12px rgba(27,36,48,.36);
 }
 .rec-sleeve img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .rec-blank {
   position: absolute; inset: 0;
   background: repeating-linear-gradient(45deg, var(--surface) 0 6px, var(--bg) 6px 12px);
-}
-/* the opening edge of the sleeve */
-.rec-spine {
-  position: absolute;
-  top: 0; bottom: 0; left: 0;
-  width: 4px;
-  background: linear-gradient(90deg, rgba(40,48,58,.18), transparent);
 }
 
 /* the record slides out to the right as you come near it */
@@ -465,8 +498,8 @@
   width: 88%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: repeating-radial-gradient(circle, #3f444c 0 1px, #484e56 1px, #3c4149 2px);
-  box-shadow: 2px 2px 8px rgba(28, 34, 42, 0.3);
+  background: repeating-radial-gradient(circle, #232a32 0 1px, #2b323b 1px, #20272e 2px);
+  box-shadow: 3px 4px 8px rgba(15,20,26,.25);
   transform: translateX(-12%);
   transition: transform var(--slow) var(--out);
   z-index: -1;
@@ -488,19 +521,37 @@
   transition: transform 280ms var(--out);
   will-change: transform;
 }
-/* the instant the flyer exists, the shelf copy stops being the record */
+/* the instant the flyer exists, the pile's copy stops being the record */
 .rec.flying .rec-disc { opacity: 0; transition: none; }
 .rec.seated .rec-disc { opacity: 0; }
 
-.rec-meta { display: grid; gap: 0.1rem; padding: 0.4rem 0 0; min-width: 0; }
+/* 题签 — stuck across the sleeve's lower-left corner */
+.rec-meta {
+  position: relative;
+  display: grid;
+  gap: 0.1rem;
+  width: fit-content;
+  max-width: calc(100% + 0.2rem);
+  margin: -0.9rem 0 0 -0.5rem;
+  padding: 0.3rem 0.55rem 0.32rem;
+  background: var(--paper);
+  box-shadow: 0 0 0 1px rgba(27,36,48,.16), 1px 2px 3px rgba(27,36,48,.08);
+  pointer-events: none;
+  z-index: 1;
+}
+/* two lines for a title before it gives up */
 .rec-meta b {
   font-family: var(--serif);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 400;
+  line-height: 1.4;
   color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
-.rec-meta i {
+.rec-meta i, .rec-meta em {
   font-style: normal;
   font-family: var(--mono);
   font-size: 0.54rem;
@@ -508,10 +559,11 @@
   color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* the one on the machine says so, in the artist's line so nothing reflows */
+.rec-meta em { display: none; color: var(--accent); }
 .rec.seated .rec-meta b { color: var(--accent-deep); }
-
-/* the machine lights up as a target while a record is in hand */
-.vstage.carrying .platter { box-shadow: 0 0 0 1px var(--accent), 0 0 0 7px var(--accent-soft); }
+.rec.seated .rec-meta i { display: none; }
+.rec.seated .rec-meta em { display: block; }
 
 /* ── the record in flight ── */
 .vflyer {
@@ -521,8 +573,8 @@
   z-index: 200;
   pointer-events: none;
   border-radius: 50%;
-  background: repeating-radial-gradient(circle, #3d424a 0 1px, #464c54 1px, #3a3f47 2px);
-  box-shadow: 0 12px 26px rgba(28, 34, 42, 0.36);
+  background: #1e242c;
+  box-shadow: 0 12px 26px rgba(15, 20, 26, 0.36);
   display: grid;
   place-items: center;
   will-change: transform, box-shadow;
@@ -532,23 +584,23 @@
 }
 .vflyer-grooves {
   position: absolute;
-  inset: 9%;
+  inset: 6%;
   border-radius: 50%;
   background: repeating-radial-gradient(circle, rgba(255,255,255,.055) 0 1px, transparent 1px, transparent 3px);
 }
 .vflyer img {
   position: relative;
-  width: 38%; height: 38%;
+  width: 35%; height: 35%;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.22);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.3);
   backface-visibility: hidden;
 }
 .vflyer-hole {
   position: absolute;
-  width: 3.2%; height: 3.2%;
+  width: 2.8%; height: 2.8%;
   border-radius: 50%;
-  background: #eceef1;
+  background: #e3e6ea;
   z-index: 2;
 }
 
@@ -600,34 +652,30 @@
 .vnote-links a:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* ─────────────────────────────────────────────────────────
-   窄屏 — the rack goes under the machine and lies flat
+   窄屏 — the pile goes under the desk and lies in a row
    ───────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
-  .vstage { grid-template-columns: minmax(0, 1fr); gap: 2.4rem; }
+  .vstage { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
 
-  /* Scale the whole scene rather than resizing its parts. The arm's geometry
-     is solved against a 470×336 plinth (see .tonearm) and re-tuning platter
-     and arm separately is exactly how the stylus ends up missing the record. */
-  .deck3d { transform: rotateX(50deg) scale(0.68); }
-  .vstage[data-lid="open"] .deck3d { transform: rotateX(43deg) scale(0.68); }
-  .machine { margin-bottom: -74px; }
+  /* Scale the whole desk rather than resizing its parts: the arm is solved
+     in the deck's own pixels (see .tonearm). zoom, not transform, so the
+     desk also takes up less room in the flow. */
+  .vdesk { zoom: 0.46; }
 
+  .rack-wrap { align-self: auto; }
+  .rack:not(.at-end) { -webkit-mask-image: none; mask-image: none; }
   .rack {
+    contain: none;
     grid-template-columns: none;
     grid-auto-flow: column;
-    grid-auto-columns: 108px;
-    max-height: none;
+    grid-auto-columns: 112px;
     overflow-x: auto;
     overflow-y: hidden;
-    gap: 0.9rem;
-    padding-bottom: 0.8rem;
+    padding-bottom: 1rem;
   }
-  .rec-grab { transform: none; }
-  .rec-grab:hover { transform: translateY(-4px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .deck3d, .lid, .tonearm, .rec-grab, .rec-disc, .lid-glint::after, .vnote { transition: none; }
-  .vdisc { transform: none !important; }
+  .tonearm, .rec-grab, .rec-disc, .vsleeve, .vnote { transition: none; }
 }
