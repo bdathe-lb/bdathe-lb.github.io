@@ -1,13 +1,100 @@
 {{ define "main" }}
+{{/* ═══════════════════════════════════════════════════════════
+     404 —— 此页阙
+
+     古书里缺了页、缺了字的地方，印一个「阙」。这里画的就是那样一张笺：
+     和诗页的笺同一副笔墨，文武边、乌丝栏都在，该写字的那一块空着，
+     当中一个「阙」字。
+
+     旁边先说是哪一页没找到，再拿地址里的词去全站的标题和链接里找最像
+     的三条 —— 来到这里的人多半是点了旧链接或者打错了一个字。都不像，
+     就不说。
+     ═══════════════════════════════════════════════════════════ */}}
 <section class="lost">
-  <h1>这一页不在了</h1>
-  <p>可能是搬走了，也可能从来没有过。按 ⌘K 找找看，或者从下面这些地方接着逛。</p>
-  <ul>
-    <li><a href="{{ "/" | relURL }}">主页</a></li>
-    {{ range .Site.Params.nav }}
-      <li><a href="{{ .url | relURL }}">{{ .name }} {{ .latin }}</a></li>
-    {{ end }}
-    <li><a href="{{ "/about/" | relURL }}">关于</a></li>
-  </ul>
+  <div class="lost-jian" aria-hidden="true">
+    <span class="lj-cols"></span>
+    <span class="lj-hole"><b>阙</b></span>
+  </div>
+
+  <div class="lost-body">
+    <h1>这一页不在了</h1>
+    <p class="lost-path mono" id="lostPath"></p>
+    <p class="lost-say">可能是搬走了，也可能从来没有过。</p>
+
+    <div class="lost-guess" id="lostGuess" hidden>
+      <span class="mono">你要找的也许是</span>
+      <ul id="lostGuessList"></ul>
+    </div>
+
+    <button type="button" class="lost-search" data-cmdk>
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.6"></circle><path d="m10.4 10.4 3.4 3.4"></path></svg>
+      搜一搜
+      <kbd class="mono">⌘K</kbd>
+    </button>
+
+    <nav class="lost-go" aria-label="去别处看看">
+      <a href="{{ "/" | relURL }}"><i>首</i><small class="mono">home</small></a>
+      {{ range .Site.Params.nav }}
+        <a href="{{ .url | relURL }}"><i>{{ .name }}</i><small class="mono">{{ .latin }}</small></a>
+      {{ end }}
+      <a href="{{ "/about/" | relURL }}"><i>我</i><small class="mono">about</small></a>
+    </nav>
+  </div>
 </section>
+
+<script>
+/* window.SITE is written after <main> (baseof.html), so wait for it */
+addEventListener('DOMContentLoaded', function () {
+  var path = '';
+  try { path = decodeURIComponent(location.pathname); } catch (e) { path = location.pathname; }
+  var pathEl = document.getElementById('lostPath');
+  if (pathEl) pathEl.textContent = path;
+
+  /* 地址里的词：按 / - _ . 空白切开，太短的、站里到处都有的不算 */
+  var skip = { posts: 1, post: 1, html: 1, index: 1, www: 1, page: 1, site: 1,
+               poems: 1, music: 1, photos: 1, slides: 1, about: 1, album: 1, vinyl: 1, verse: 1 };
+  var words = path.toLowerCase().split(/[\/\-_.\s]+/).filter(function (w) {
+    return w.length >= 2 && !skip[w];
+  });
+  var S = window.SITE || {};
+  if (!words.length) return;
+
+  var pool = [];
+  (S.writing || []).forEach(function (w) { pool.push({ k: '文', t: w.title, u: w.url }); });
+  (S.poems || []).forEach(function (p) { pool.push({ k: '诗', t: p.title, u: p.url }); });
+  (S.music || []).forEach(function (m) { pool.push({ k: '音', t: m.title, u: m.url }); });
+  (S.photos || []).forEach(function (p) { pool.push({ k: '影', t: p.title, u: p.url }); });
+  (S.slides || []).forEach(function (d) { pool.push({ k: '讲', t: d.title, u: d.url, blank: true }); });
+
+  var hits = pool.map(function (c) {
+    var hay = (c.t + ' ' + c.u).toLowerCase();
+    var score = 0;
+    words.forEach(function (w) { if (hay.indexOf(w) > -1) score += w.length; });
+    return { c: c, score: score };
+  }).filter(function (h) { return h.score > 0; })
+    .sort(function (a, b) { return b.score - a.score; });
+  /* a stray two-letter overlap is not a guess: keep only what scores close
+     to the best match */
+  if (hits.length) {
+    var top = hits[0].score;
+    hits = hits.filter(function (h) { return h.score >= top * 0.6; }).slice(0, 3);
+  }
+  if (!hits.length) return;
+
+  var list = document.getElementById('lostGuessList');
+  hits.forEach(function (h) {
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = h.c.u;
+    if (h.c.blank) { a.target = '_blank'; a.rel = 'noopener'; }
+    var k = document.createElement('i');
+    k.textContent = h.c.k;
+    a.appendChild(k);
+    a.appendChild(document.createTextNode('《' + h.c.t + '》'));
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+  document.getElementById('lostGuess').hidden = false;
+});
+</script>
 {{ end }}
