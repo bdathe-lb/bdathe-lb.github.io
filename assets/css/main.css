@@ -1173,6 +1173,15 @@ img { max-width: 100%; }
   /* no hover to reveal it, and no gutter to park it in */
   .prose .h-anchor { display: none; }
 }
+/* The site sets every weight to 400 — 文楷 has only the one — so bold in an
+   article would look exactly like the text around it. A pen-stroke of
+   highlight under the lower half of the line carries the emphasis instead. */
+.prose strong, .prose b {
+  background: linear-gradient(transparent 58%, color-mix(in srgb, var(--accent) 15%, transparent) 58% 92%, transparent 92%);
+  padding: 0 0.08em;
+  color: var(--ink);
+}
+
 .prose a {
   color: var(--accent);
   border-bottom: 1px solid var(--accent-soft);

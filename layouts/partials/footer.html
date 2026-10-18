@@ -3,6 +3,8 @@
   <nav class="mono">
     <a href="{{ "/about/" | relURL }}">关于</a>
     {{ with .Site.Params.github }}<a href="{{ . }}" target="_blank" rel="noopener">GITHUB</a>{{ end }}
-    {{ with .OutputFormats.Get "RSS" }}<a href="{{ .Permalink }}">RSS</a>{{ end }}
+    {{/* 取首页的 RSS，不是当前页的 —— 单页没有 RSS 输出，按当前页取，
+         文章页和关于页的页脚就会少这一项 */}}
+    {{ with site.Home.OutputFormats.Get "RSS" }}<a href="{{ .Permalink }}">RSS</a>{{ end }}
   </nav>
 </footer>
