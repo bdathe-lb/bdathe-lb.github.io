@@ -106,16 +106,18 @@
     var touch = matchMedia('(hover: none)').matches;
     var current = null;
     var hideTimer = 0;
+    /* 没指着任何一件时，那一行读的是最近动过的那一件（模板算好，标在
+       .is-fresh 上）。这一行于是从不空着 —— 空着的时候，第一次来的人
+       看不出桌上的东西是能点的。 */
+    var rest = plate.querySelector('.stobj.is-fresh');
+    var shown = null;
 
-    var show = function (obj) {
-      clearTimeout(hideTimer);
-      current = obj;
-      objects.forEach(function (o) { o.classList.toggle('on', o === obj); });
-      if (!readout) return;
-      roK.textContent = obj.dataset.kicker;
+    var read = function (obj, idle) {
+      if (!readout || obj === shown) return;
+      shown = obj;
+      roK.textContent = obj.dataset.kicker + (idle ? ' · 最近更新' : '');
       roT.textContent = obj.dataset.title;
       roM.textContent = obj.dataset.meta;
-      readout.setAttribute('aria-hidden', 'false');
       readout.classList.add('on');
       if (!still) {
         readout.classList.remove('swap');
@@ -124,12 +126,20 @@
       }
     };
 
+    var show = function (obj) {
+      clearTimeout(hideTimer);
+      current = obj;
+      objects.forEach(function (o) { o.classList.toggle('on', o === obj); });
+      read(obj, false);
+    };
+
     var hide = function () {
       current = null;
       objects.forEach(function (o) { o.classList.remove('on'); });
       if (!readout) return;
+      if (rest) { shown = null; read(rest, true); return; }
       readout.classList.remove('on', 'swap');
-      readout.setAttribute('aria-hidden', 'true');
+      shown = null;
     };
 
     var leave = function () {
@@ -152,6 +162,14 @@
         if (touch && !obj.classList.contains('on')) { e.preventDefault(); show(obj); }
       });
     });
+
+    if (rest && readout) {
+      shown = rest;
+      roK.textContent = rest.dataset.kicker + ' · 最近更新';
+      roT.textContent = rest.dataset.title;
+      roM.textContent = rest.dataset.meta;
+      readout.classList.add('on');
+    }
 
     if (touch) {
       document.addEventListener('pointerdown', function (e) {

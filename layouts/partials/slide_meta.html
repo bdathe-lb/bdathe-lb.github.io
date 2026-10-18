@@ -1,0 +1,37 @@
+{{/* One deck out of data/slides.yaml → what its cover needs.
+
+     The workshop compiles each deck to a reveal.js html whose markdown sits
+     in <textarea data-template>; the H1 is the title, the H2s are the
+     outline, and the slide separators count the pages. A title in the
+     catalog wins over the H1.
+
+       {{ $m := partial "slide_meta.html" $deck }}
+       $m.title  $m.outline  $m.slides  $m.url */}}
+
+{{- $path := printf "static/slides/site/slides/%s" .file -}}
+{{- $title := "" -}}
+{{- $outline := slice -}}
+{{- $slides := 0 -}}
+{{- if fileExists $path -}}
+  {{- $raw := readFile $path -}}
+  {{- $body := "" -}}
+  {{- with findRESubmatch `(?s)<textarea data-template>(.*?)</textarea>` $raw 1 -}}
+    {{- $body = index (index . 0) 1 -}}
+  {{- end -}}
+  {{- with $body -}}
+    {{- with findRESubmatch `(?m)^#[^#]\s*(.+?)\s*$` . 1 -}}
+      {{- $title = index (index . 0) 1 -}}
+    {{- end -}}
+    {{- range findRESubmatch `(?m)^##[^#]\s*(.+?)\s*$` . -}}
+      {{- $outline = $outline | append (replaceRE `^Part\s*\d+[.、:：]?\s*` "" (index . 1)) -}}
+    {{- end -}}
+    {{- $slides = add 1 (len (findRE `(?m)^\s*(---|-v-)\s*$` .)) -}}
+  {{- end -}}
+{{- end -}}
+{{- with .title -}}{{- $title = . -}}{{- end -}}
+
+{{- return (dict
+    "title" $title
+    "outline" $outline
+    "slides" $slides
+    "url" (printf "/slides/site/slides/%s" .file | relURL)) -}}

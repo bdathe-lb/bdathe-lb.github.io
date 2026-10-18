@@ -280,14 +280,17 @@
   font-family: var(--serif);
   font-size: 15px;
   text-anchor: middle;
-  opacity: 0;
-  transform: translateY(5px);
+  /* 平时就淡淡地写着 —— 全藏起来的话，第一次来的人不知道书是「文」、
+     相机是「影」，也就不知道这些东西能点。指上去才写实。 */
+  opacity: 0.34;
+  transform: translateY(3px);
   pointer-events: none;
   transition: opacity 300ms var(--soft), transform 300ms var(--soft);
 }
 .stobj:hover .st-tag,
 .stobj:focus-visible .st-tag,
-.stobj.on .st-tag { opacity: 1; transform: translateY(0); }
+.stobj.on .st-tag,
+.st-things:not(:has(.stobj.on, .stobj:hover)) .stobj.is-fresh .st-tag { opacity: 1; transform: translateY(0); }
 .stobj:focus-visible .st-lift { outline: 1px dashed var(--accent); outline-offset: 6px; }
 
 /* ── 图底下那一行 ──────────────────────────────────────
@@ -445,7 +448,14 @@
 /* ── 文 —— 一页正在写的稿纸 ──────────────────────────────
    格线是印好的（背景里那一道 repeating 硬色标），墨划是写上去的。
    两者错开三个像素：字坐在线上，不压着线。 */
-.c-wen .stc-copy { right: 150px; }
+/* 稿纸占右边 ~150px，摘要再长也得在它左边收住：留出一指宽，最多两行 */
+.c-wen .stc-copy { right: 176px; }
+.c-wen .stc-copy p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .c-wen .stc-copy h3 { font-size: clamp(1.6rem, 3vw, 1.95rem); }
 
 .c-wen .sheet {

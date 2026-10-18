@@ -30,22 +30,27 @@
 {{- $latestPoem := index $poems 0 -}}
 {{- $latestTrack := index $tracks 0 -}}
 {{- $latestPhoto := index $photos 0 -}}
+{{- $decks := sort hugo.Data.slides "date" "desc" -}}
 {{- $latestSlideTitle := "" -}}
 {{- $latestSlideDate := "" -}}
-{{- with index (sort hugo.Data.slides "date" "desc") 0 -}}
+{{- with index $decks 0 -}}
   {{- $latestSlideDate = replace .date "-" "." -}}
-  {{- $path := printf "static/slides/site/slides/%s" .file -}}
-  {{- if fileExists $path -}}
-    {{- $raw := readFile $path -}}
-    {{- $body := "" -}}
-    {{- with findRESubmatch `(?s)<textarea data-template>(.*?)</textarea>` $raw 1 -}}
-      {{- $body = index (index . 0) 1 -}}
-    {{- end -}}
-    {{- with $body -}}
-      {{- with findRESubmatch `(?m)^#[^#]\s*(.+?)\s*$` . 1 -}}
-        {{- $latestSlideTitle = index (index . 0) 1 -}}
-      {{- end -}}
-    {{- end -}}
+  {{- $latestSlideTitle = (partial "slide_meta.html" .).title -}}
+{{- end -}}
+
+{{/* 五件里最近动过的那一件。没指着任何东西的时候，底下那一行读的就是它 ——
+     第一次来的人不用先猜哪件能点，桌上已经有一件替这座园子开口了。
+     time.AsTime 两种都吃：YAML 里没加引号的日期是时间，加了引号的是字符串。 */}}
+{{- $stamps := dict "slides" (replace $latestSlideDate "." "-") -}}
+{{- with $latestPost  -}}{{- $stamps = merge $stamps (dict "posts"  .Date) -}}{{- end -}}
+{{- with $latestPoem  -}}{{- $stamps = merge $stamps (dict "poems"  .date) -}}{{- end -}}
+{{- with $latestTrack -}}{{- $stamps = merge $stamps (dict "music"  .date) -}}{{- end -}}
+{{- with $latestPhoto -}}{{- $stamps = merge $stamps (dict "photos" .date) -}}{{- end -}}
+{{- $fresh := "" -}}{{- $freshT := 0 -}}
+{{- range $k, $d := $stamps -}}
+  {{- with $d -}}
+    {{- $t := (time.AsTime .).Unix -}}
+    {{- if gt $t $freshT -}}{{- $freshT = $t -}}{{- $fresh = $k -}}{{- end -}}
   {{- end -}}
 {{- end -}}
 
@@ -152,7 +157,7 @@
           <g class="st-things">
 
             {{/* 文 —— 一本摊开的书 */}}
-            <a class="stobj" href="{{ "/posts/" | relURL }}" transform="translate(62 336)"
+            <a class="stobj{{ if eq $fresh "posts" }} is-fresh{{ end }}" href="{{ "/posts/" | relURL }}" transform="translate(62 336)"
                data-kicker="文 · WRITING" data-title="{{ $latestPost.Title }}"
                data-meta="{{ $latestPost.Date.Format "2006.01.02" }} · 最近写下">
               <title>文 · 随笔与笔记</title>
@@ -178,7 +183,7 @@
             </a>
 
             {{/* 诗 —— 一张立着的笺，字是竖排的 */}}
-            <a class="stobj" href="{{ "/poems/" | relURL }}" transform="translate(154 336)"
+            <a class="stobj{{ if eq $fresh "poems" }} is-fresh{{ end }}" href="{{ "/poems/" | relURL }}" transform="translate(154 336)"
                data-kicker="诗 · POEMS" data-title="{{ $latestPoem.excerpt }}"
                data-meta="{{ $latestPoem.author }} · {{ $latestPoem.title }}">
               <title>诗 · 案上的五张笺</title>
@@ -201,7 +206,7 @@
             </a>
 
             {{/* 音 —— 唱片从套里抽出一半 */}}
-            <a class="stobj" href="{{ "/music/" | relURL }}" transform="translate(232 336)"
+            <a class="stobj{{ if eq $fresh "music" }} is-fresh{{ end }}" href="{{ "/music/" | relURL }}" transform="translate(232 336)"
                data-kicker="音 · MUSIC" data-title="{{ $latestTrack.title }}"
                data-meta="{{ $latestTrack.artist }} · 最近在听">
               <title>音 · 唱机与唱片架</title>
@@ -228,9 +233,9 @@
             </a>
 
             {{/* 影 —— 相机 */}}
-            <a class="stobj" href="{{ "/photos/" | relURL }}" transform="translate(340 336)"
+            <a class="stobj{{ if eq $fresh "photos" }} is-fresh{{ end }}" href="{{ "/photos/" | relURL }}" transform="translate(340 336)"
                data-kicker="影 · PHOTOS" data-title="{{ $latestPhoto.caption | default $latestPhoto.title }}"
-               data-meta="{{ $latestPhoto.date }} · 共 {{ len $photos }} 张">
+               data-meta="{{ $latestPhoto.date }} · 最近拍下">
               <title>影 · 一本摊开的相册</title>
               <rect class="st-hit" x="-44" y="-68" width="88" height="76" aria-hidden="true"/>
               <g class="st-lift">
@@ -249,7 +254,7 @@
             </a>
 
             {{/* 讲 —— 一块立着的讲稿板 */}}
-            <a class="stobj" href="{{ "/slides/" | relURL }}" transform="translate(490 336)"
+            <a class="stobj{{ if eq $fresh "slides" }} is-fresh{{ end }}" href="{{ "/slides/" | relURL }}" transform="translate(490 336)"
                data-kicker="讲 · SLIDES" data-title="{{ $latestSlideTitle | default "讲稿与演示" }}"
                data-meta="{{ with $latestSlideDate }}{{ . }} · {{ end }}最近一份">
               <title>讲 · 讲稿与演示</title>
@@ -313,14 +318,15 @@
 
     {{/* 图底下一条发丝线，两头各站一样东西：左边是这座园子有多少东西
          （一条内容一划，五划一组 —— 墨划不用读，一眼就是个数），右边是
-         被指着的那一件。 */}}
+         被指着的那一件；没指着的时候，是最近动过的那一件（.is-fresh）。 */}}
     <div class="st-foot">
       <div class="st-tally reveal">
         {{ range slice
             (dict "g" "文" "n" (len $posts)  "u" ("/posts/"  | relURL))
             (dict "g" "诗" "n" (len $poems)  "u" ("/poems/"  | relURL))
             (dict "g" "音" "n" (len $tracks) "u" ("/music/"  | relURL))
-            (dict "g" "影" "n" (len $photos) "u" ("/photos/" | relURL)) }}
+            (dict "g" "影" "n" (len $photos) "u" ("/photos/" | relURL))
+            (dict "g" "讲" "n" (len hugo.Data.slides) "u" ("/slides/" | relURL)) }}
           <a class="st-count" href="{{ .u }}" aria-label="{{ .g }} · 共 {{ .n }} 条">
             <b>{{ .g }}</b>
             <span class="strokes" aria-hidden="true">{{ range seq .n }}<i style="--n:{{ . }}"></i>{{ end }}</span>
@@ -328,7 +334,7 @@
         {{ end }}
       </div>
 
-      <div class="st-readout" id="stReadout" aria-live="polite" aria-hidden="true">
+      <div class="st-readout" id="stReadout" aria-live="polite">
         <span class="ro-k" id="stRoK">文 · WRITING</span>
         <strong class="ro-t" id="stRoT">{{ $latestPost.Title }}</strong>
         <span class="ro-m" id="stRoM">{{ $latestPost.Date.Format "2006.01.02" }} · 最近写下</span>
@@ -346,131 +352,171 @@
 </section>
 
 {{/* ═══ 近作 ═══════════════════════════════════════════════
-     排法照搬现在的落地页：六张一样大的卡片，两列，每张都是
+     书桌回答「去哪里」，这一格回答「最近发生了什么」—— 五个栏目各取
+     最近的一件，按时间先后排，最新的在左上；第六张留给「我」。
 
-         左上一行题签和计数 —— 右边压着一件属于这个栏目的东西
+     每张卡的排法不变：
+
+         左上一行题签和日期 —— 右边压着一件属于这个栏目的东西
          —— 左下角是内容自己的那几行字（小题 / 正题 / 一句 / 去处）
 
-     那一套之所以立得住，是因为字和物各占一边：字永远在左下角同一个
-     位置，所以六张卡读起来是同一个节奏；物永远在右上角，所以六张卡
-     看起来是六件不同的东西。上一版把物摆到中间、字挤到边上，两边都
-     没占稳，才会显得散。
-
-     换掉的只有材质：没有玻璃、没有圆角、没有投影、没有渐变 —— 卡片
-     是纸上一个方框，物是白描，和上面那张桌子同一支笔。
+     字永远在左下角同一个位置，所以六张卡读起来是同一个节奏；物永远在
+     右上角，所以六张卡看起来是六件不同的东西。卡片是纸上一个方框，物是
+     白描，和上面那张桌子同一支笔：
 
        文 —— 一页正在写的稿纸，页边线是花青，末了一个还在闪的光标
        影 —— 相片别在台纸上，四只相角；拿起来时相角留在原地（/album/）
-       诗 —— 一张笺，文武边加罗纹，词竖排写在上面，角上一枚「读」
+       诗 —— 一张笺，词竖排写在上面，角上一枚「读」
        音 —— 一整张唱片，唱片心就是这张专辑的封面，一直在转（/vinyl/）
        讲 —— 三页讲稿叠着，指上去散开
        我 —— 一张藏书票：双边框、一句引文、一枚印 */}}
+
+{{- $feed := slice -}}
+{{- range $posts -}}
+  {{- $feed = $feed | append (dict "k" "wen" "t" .Date.Unix "m" (.Date.Format "2006-01") "d" (.Date.Format "2006.01.02") "p" .) -}}
+{{- end -}}
+{{- range $kind, $rows := dict "shi" $poems "yin" $tracks "ying" $photos "jiang" $decks -}}
+  {{- range $rows -}}
+    {{- $t := time.AsTime .date -}}
+    {{- $feed = $feed | append (dict "k" $kind "t" $t.Unix "m" ($t.Format "2006-01") "d" ($t.Format "2006.01.02") "x" .) -}}
+  {{- end -}}
+{{- end -}}
+{{- $feed = sort $feed "t" "desc" -}}
+
+{{/* 每个栏目只出一张，取它最近的那一件；顺序仍按时间。严格按时间排，
+     一个听歌多的月份就会让「音」占两格、把「影」挤出去 —— 这一格要的是
+     "园子里各处最近都怎么样"，不是一条只看得见最勤快那一栏的流水。
+     同一个月里这一栏还有别的，就在卡上记一句「同月还有几首」。 */}}
+{{- $seen := dict -}}
+{{- $picked := slice -}}
+{{- range $feed -}}
+  {{- if not (isset $seen .k) -}}
+    {{- $seen = merge $seen (dict .k true) -}}
+    {{- $picked = $picked | append (merge . (dict "more" (sub (len (where (where $feed "k" .k) "m" .m)) 1))) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $unit := dict "wen" "篇" "shi" "首" "yin" "首" "ying" "张" "jiang" "份" -}}
+
 <section class="st-garden" id="garden">
   <div class="rule reveal">
     <h2>近作</h2><span class="bar"></span>
   </div>
 
   <div class="st-bento">
+    {{ range first 5 $picked }}
+      {{- $c := . -}}
+      {{- $x := $c.x -}}
+      {{- $more := "" -}}
+      {{- with $c.more -}}{{- $more = printf "同月还有 %d %s" . (index $unit $c.k) -}}{{- end -}}
 
-    {{/* 文 —— 一页正在写的稿纸 */}}
-    <a class="stc c-wen reveal" data-tilt href="{{ "/posts/" | relURL }}">
-      <div class="stc-head"><span>文 · WRITING</span><i>{{ printf "%02d" (len $posts) }}</i></div>
-      {{/* 划是写上去的字，格是印好的线 —— 两者错开三个像素，字才像是
-           坐在格线上，而不是压着格线 */}}
-      <div class="sheet" aria-hidden="true">
-        <i class="ti"></i><i></i><i></i><i></i>
-      </div>
-      <div class="stc-copy">
-        <small>最近写下</small>
-        <h3>{{ $latestPost.Title }}</h3>
-        <p>{{ $latestPost.Params.summary | default ($latestPost.Summary | plainify | truncate 46) }}</p>
-        <span class="stc-meta">{{ $latestPost.Date.Format "2006.01.02" }} · 继续阅读 ↗</span>
-      </div>
-    </a>
+      {{ if eq .k "wen" }}
+        {{- $p := $c.p -}}
+        {{/* 文 —— 一页正在写的稿纸 */}}
+        <a class="stc c-wen reveal" data-tilt href="{{ $p.RelPermalink }}">
+          <div class="stc-head"><span>文 · WRITING</span><i>{{ $c.d }}</i></div>
+          {{/* 划是写上去的字，格是印好的线 —— 两者错开三个像素，字才像是
+               坐在格线上，而不是压着格线 */}}
+          <div class="sheet" aria-hidden="true">
+            <i class="ti"></i><i></i><i></i><i></i>
+          </div>
+          <div class="stc-copy">
+            <small>写下 · {{ if eq ($p.Params.form | default "essay") "note" }}笔记{{ else }}随笔{{ end }}</small>
+            <h3>{{ $p.Title }}</h3>
+            <p>{{ $p.Params.summary | default ($p.Summary | plainify | truncate 46) }}</p>
+            <span class="stc-meta">{{ with $more }}{{ . }} · {{ end }}继续阅读 ↗</span>
+          </div>
+        </a>
 
-    {{/* 影 —— 别在台纸上的相片。相角是台纸的东西，不是相片的东西，
-         所以相片被拿起来的时候四个角留在原地。角用实心的纸色三角
-         （border 画的）：压在照片上的一根发丝线在深色画面里看不见。 */}}
-    <a class="stc c-ying reveal" data-tilt href="{{ "/photos/" | relURL }}">
-      <div class="stc-head"><span>影 · PHOTOS</span><i>{{ printf "%02d" (len $photos) }}</i></div>
-      <div class="mount">
-        {{- $res := resources.Get (strings.TrimPrefix "/" $latestPhoto.image) -}}
-        {{ if and $res (eq $res.ResourceType "image") }}
-          {{ $img := $res.Resize "760x webp q82" }}
-          <img src="{{ $img.RelPermalink }}" width="{{ $img.Width }}" height="{{ $img.Height }}" alt="{{ $latestPhoto.title }}" loading="lazy">
-        {{ else }}
-          <img src="{{ $latestPhoto.image | relURL }}" alt="{{ $latestPhoto.title }}" loading="lazy">
-        {{ end }}
-        <i class="cn a" aria-hidden="true"></i><i class="cn b" aria-hidden="true"></i>
-        <i class="cn c" aria-hidden="true"></i><i class="cn d" aria-hidden="true"></i>
-      </div>
-      <div class="stc-copy">
-        <small>{{ $latestPhoto.date }}</small>
-        <h3>{{ $latestPhoto.caption | default $latestPhoto.title }}</h3>
-        <span class="stc-meta">{{ $latestPhoto.title }} · 进入取景框 ↗</span>
-      </div>
-    </a>
+      {{ else if eq .k "ying" }}
+        {{/* 影 —— 别在台纸上的相片。相角是台纸的东西，不是相片的东西，
+             所以相片被拿起来的时候四个角留在原地。角用实心的纸色三角
+             （border 画的）：压在照片上的一根发丝线在深色画面里看不见。 */}}
+        <a class="stc c-ying reveal" data-tilt href="{{ "/photos/" | relURL }}">
+          <div class="stc-head"><span>影 · PHOTOS</span><i>{{ $c.d }}</i></div>
+          <div class="mount">
+            {{- $res := resources.Get (strings.TrimPrefix "/" $x.image) -}}
+            {{ if and $res (eq $res.ResourceType "image") }}
+              {{ $img := $res.Resize "760x webp q82" }}
+              <img src="{{ $img.RelPermalink }}" width="{{ $img.Width }}" height="{{ $img.Height }}" alt="{{ $x.title }}" loading="lazy">
+            {{ else }}
+              <img src="{{ $x.image | relURL }}" alt="{{ $x.title }}" loading="lazy">
+            {{ end }}
+            <i class="cn a" aria-hidden="true"></i><i class="cn b" aria-hidden="true"></i>
+            <i class="cn c" aria-hidden="true"></i><i class="cn d" aria-hidden="true"></i>
+          </div>
+          <div class="stc-copy">
+            <small>拍下 · {{ $x.title }}</small>
+            <h3>{{ $x.caption | default $x.title }}</h3>
+            <span class="stc-meta">{{ with $more }}{{ . }} · {{ end }}翻开相册 ↗</span>
+          </div>
+        </a>
 
-    {{/* 诗 —— 一张笺 */}}
-    <a class="stc c-shi reveal" data-tilt href="{{ "/poems/" | relURL }}">
-      <div class="stc-head"><span>诗 · POEMS</span><i>{{ printf "%02d" (len $poems) }}</i></div>
-      <blockquote class="jian"><span>{{ $latestPoem.excerpt }}</span><i class="yin" aria-hidden="true">读</i></blockquote>
-      <div class="stc-copy">
-        <small>最近读到</small>
-        <h3>{{ $latestPoem.title }}</h3>
-        <p>{{ $latestPoem.author }}{{ with $latestPoem.dynasty }} · {{ . }}{{ end }}</p>
-      </div>
-    </a>
+      {{ else if eq .k "shi" }}
+        {{/* 诗 —— 一张笺 */}}
+        <a class="stc c-shi reveal" data-tilt href="{{ printf "/poems/#%s" $x.slug | relURL }}">
+          <div class="stc-head"><span>诗 · POEMS</span><i>{{ $c.d }}</i></div>
+          <blockquote class="jian"><span>{{ $x.excerpt }}</span><i class="yin" aria-hidden="true">读</i></blockquote>
+          <div class="stc-copy">
+            <small>抄下</small>
+            <h3>{{ $x.title }}</h3>
+            <p>{{ $x.author }}{{ with $x.dynasty }} · {{ . }}{{ end }}</p>
+            {{ with $more }}<span class="stc-meta">{{ . }} ↗</span>{{ end }}
+          </div>
+        </a>
 
-    {{/* 音 —— 一整张唱片，唱片心就是这张专辑的封面。
-         上一版是封套压着唱片，露在外面的只有右半边那几道弧 —— 三道
-         同心弧不像唱片，像信号格。整张摆出来，封面当片心，反而两样
-         东西都在：是唱片，也是这张专辑。 */}}
-    <a class="stc c-yin reveal" data-tilt href="{{ "/music/" | relURL }}">
-      <div class="stc-head"><span>音 · MUSIC</span><i>{{ printf "%02d" (len $tracks) }}</i></div>
-      {{- $cid := "" -}}
-      {{- with $latestTrack.spotify -}}
-        {{- with findRE `track/([A-Za-z0-9]+)` . 1 -}}{{- $cid = replace (index . 0) "track/" "" -}}{{- end -}}
-      {{- end -}}
-      <div class="disc" aria-hidden="true">
-        <svg viewBox="0 0 104 104">
-          <circle cx="52" cy="52" r="51"/>
-          <circle class="f" cx="52" cy="52" r="46"/>
-          <circle class="f" cx="52" cy="52" r="41"/>
-          <circle class="f" cx="52" cy="52" r="36"/>
-          <circle cx="52" cy="52" r="28"/>
-        </svg>
-        <span class="label">
-          {{ with resources.Get (printf "images/covers/%s.jpg" $cid) }}
-            {{ $c := .Resize "160x webp q82" }}
-            <img src="{{ $c.RelPermalink }}" width="{{ $c.Width }}" height="{{ $c.Height }}" alt="" loading="lazy">
-          {{ end }}
-        </span>
-        <i class="pin"></i>
-      </div>
-      <div class="stc-copy">
-        <small>最近在听</small>
-        <h3>{{ $latestTrack.title }}</h3>
-        <p>{{ $latestTrack.artist }}</p>
-      </div>
-      <div class="eq" aria-hidden="true">{{ range seq 18 }}<i style="--n:{{ . }}"></i>{{ end }}</div>
-    </a>
+      {{ else if eq .k "yin" }}
+        {{/* 音 —— 一整张唱片，唱片心就是这张专辑的封面。整张摆出来，封面
+             当片心：是唱片，也是这张专辑。 */}}
+        {{- $cid := "" -}}
+        {{- with $x.spotify -}}
+          {{- with findRE `track/([A-Za-z0-9]+)` . 1 -}}{{- $cid = replace (index . 0) "track/" "" -}}{{- end -}}
+        {{- end -}}
+        <a class="stc c-yin reveal" data-tilt href="{{ "/music/" | relURL }}">
+          <div class="stc-head"><span>音 · MUSIC</span><i>{{ $c.d }}</i></div>
+          <div class="disc" aria-hidden="true">
+            <svg viewBox="0 0 104 104">
+              <circle cx="52" cy="52" r="51"/>
+              <circle class="f" cx="52" cy="52" r="46"/>
+              <circle class="f" cx="52" cy="52" r="41"/>
+              <circle class="f" cx="52" cy="52" r="36"/>
+              <circle cx="52" cy="52" r="28"/>
+            </svg>
+            <span class="label">
+              {{ with resources.Get (printf "images/covers/%s.jpg" $cid) }}
+                {{ $cv := .Resize "160x webp q82" }}
+                <img src="{{ $cv.RelPermalink }}" width="{{ $cv.Width }}" height="{{ $cv.Height }}" alt="" loading="lazy">
+              {{ end }}
+            </span>
+            <i class="pin"></i>
+          </div>
+          <div class="stc-copy">
+            <small>在听</small>
+            <h3>{{ $x.title }}</h3>
+            <p>{{ $x.artist }}{{ with $more }} · {{ . }}{{ end }}</p>
+          </div>
+          <div class="eq" aria-hidden="true">{{ range seq 18 }}<i style="--n:{{ . }}"></i>{{ end }}</div>
+        </a>
 
-    {{/* 讲 —— 三页叠着，指上去散开 */}}
-    <a class="stc c-jiang reveal" data-tilt href="{{ "/slides/" | relURL }}">
-      <div class="stc-head"><span>讲 · SLIDES</span><i>↗</i></div>
-      <svg class="deck" viewBox="0 0 170 118" aria-hidden="true">
-        <path class="sh s3" d="M16 32 H118 V104 H16 Z"/>
-        <path class="sh s2" d="M29 22 H131 V94 H29 Z"/>
-        <path class="sh s1" d="M42 12 H144 V84 H42 Z"/>
-        <path class="ln" d="M56 30 H100 M56 42 H128 M56 52 H110 M56 62 H132"/>
-      </svg>
-      <div class="stc-copy">
-        <small>想法的视觉切片</small>
-        <h3>讲稿、演示<br>与分享</h3>
-        <span class="stc-meta">打开讲稿室 ↗</span>
-      </div>
-    </a>
+      {{ else if eq .k "jiang" }}
+        {{- $m := partial "slide_meta.html" $x -}}
+        {{/* 讲 —— 三页叠着，指上去散开。点进去直接是那一份讲稿。 */}}
+        <a class="stc c-jiang reveal" data-tilt href="{{ $m.url }}">
+          <div class="stc-head"><span>讲 · SLIDES</span><i>{{ $c.d }}</i></div>
+          <svg class="deck" viewBox="0 0 170 118" aria-hidden="true">
+            <path class="sh s3" d="M16 32 H118 V104 H16 Z"/>
+            <path class="sh s2" d="M29 22 H131 V94 H29 Z"/>
+            <path class="sh s1" d="M42 12 H144 V84 H42 Z"/>
+            <path class="ln" d="M56 30 H100 M56 42 H128 M56 52 H110 M56 62 H132"/>
+          </svg>
+          <div class="stc-copy">
+            <small>讲过{{ with $m.slides }} · {{ . }} 页{{ end }}</small>
+            <h3>{{ $m.title | default "讲稿" }}</h3>
+            <span class="stc-meta">{{ with $more }}{{ . }} · {{ end }}打开讲稿 ↗</span>
+          </div>
+        </a>
+      {{ end }}
+    {{ end }}
 
     {{/* 我 —— 一张藏书票。旧首页这一格是整张深蓝，六张卡里唯一的重色；
          这里改成一层极淡的花青，同样只此一格，但纸还是纸。 */}}
@@ -487,16 +533,15 @@
 <section class="rings st-rings">
   <div class="rule reveal">
     <h2>行迹</h2><span class="bar"></span>
-    <span class="rule-note" id="ringsNote"></span>
   </div>
   <div class="rings-field reveal" id="rings">
     <div class="rings-tip" id="tip"></div>
   </div>
   <div class="rings-legend reveal" id="legend">
-    <span data-kind="wen"><i></i> 文 WRITING</span>
-    <span data-kind="shi"><i class="shi"></i> 诗 POEMS</span>
-    <span data-kind="yin"><i class="yin"></i> 音 MUSIC</span>
-    <span data-kind="ying"><i class="ying"></i> 影 PHOTOS</span>
+    <span data-kind="wen"><i>文</i> WRITING</span>
+    <span data-kind="shi"><i>诗</i> POEMS</span>
+    <span data-kind="yin"><i>音</i> MUSIC</span>
+    <span data-kind="ying"><i>影</i> PHOTOS</span>
   </div>
 </section>
 

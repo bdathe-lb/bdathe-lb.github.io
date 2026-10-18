@@ -308,7 +308,6 @@
     var field = document.getElementById('rings');
     if (!field) return;
     var tip = document.getElementById('tip');
-    var note = document.getElementById('ringsNote');
     var LABEL = { wen: '文', shi: '诗', yin: '音', ying: '影' };
 
     var pts = [];
@@ -322,7 +321,10 @@
     var key = function (dt) { return dt.getFullYear() * 12 + dt.getMonth(); };
     var months = pts.map(function (p) { return key(new Date(p.d)); });
     var m0 = Math.min.apply(null, months);
-    var m1 = Math.max.apply(null, months);
+    var last = Math.max.apply(null, months);
+    /* run the axis on to this month, not just to the last entry — the months
+       since are part of the record too, and stopping early hides them */
+    var m1 = Math.max(last, key(new Date()));
 
     /* Long-dormant stretches would otherwise push the active months into a
        sliver. Past three years of columns the field scrolls instead. */
@@ -356,6 +358,9 @@
         cell.dataset.kind = p.k;
         cell.href = p.u;
         cell.style.setProperty('--i', i);
+        // the kind is the character itself — four outline shapes asked the
+        // reader to learn a legend; 文 / 诗 / 音 / 影 / 讲 read on their own
+        cell.textContent = LABEL[p.k];
         cell.setAttribute('aria-label', LABEL[p.k] + ' · ' + p.l + ' · ' + fmt(p.d));
         var enter = function () {
           if (!tip) return;
@@ -386,8 +391,6 @@
       frag.appendChild(col);
     }
     field.appendChild(frag);
-
-    if (note) note.textContent = pts.length + ' 条 · ' + (m1 - m0 + 1) + ' 个月';
 
     // hovering a legend key isolates that kind
     var legend = document.getElementById('legend');

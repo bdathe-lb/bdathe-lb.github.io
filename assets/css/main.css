@@ -552,16 +552,21 @@ img { max-width: 100%; }
   flex-direction: column-reverse;
   gap: 3px;
   width: 100%;
-  min-height: calc(var(--tallest, 4) * 14px);
+  min-height: calc(var(--tallest, 4) * 19px);
   justify-content: flex-start;
   align-items: stretch;
 }
 
 .rings-field .cell {
-  height: 11px;
+  height: 16px;
   border-radius: 2px;
-  border: 1px solid var(--muted);
+  border: 1px solid color-mix(in srgb, var(--muted) 55%, transparent);
   background: var(--bg);
+  color: var(--muted);
+  font: 400 9.5px/14px var(--serif);
+  text-align: center;
+  text-decoration: none;
+  overflow: hidden;
   transition: transform var(--mid) var(--spring), background var(--mid) var(--soft),
               border-color var(--mid) var(--soft), opacity var(--mid) var(--soft);
   /* the column grows from the baseline as it scrolls into view */
@@ -573,15 +578,14 @@ img { max-width: 100%; }
   to   { opacity: 1; transform: none; }
 }
 
-/* the four marks keep the shapes the legend has always used */
-.rings-field .cell[data-kind='shi']  { border-radius: 2px; border-style: dashed; }
-.rings-field .cell[data-kind='yin']  { border-radius: 999px; }
-.rings-field .cell[data-kind='ying'] { border-radius: 999px; background: var(--muted); border-color: var(--muted); }
+/* every cell is the same small stamp; the character inside says which
+   kind it is, so there is no shape code to learn */
 
 .rings-field .cell:hover,
 .rings-field .cell:focus-visible {
   background: var(--accent);
   border-color: var(--accent);
+  color: var(--bg);
   transform: scaleX(1.16);
   outline: none;
   z-index: 2;
@@ -634,16 +638,19 @@ img { max-width: 100%; }
 }
 .rings-legend span:hover { color: var(--ink); }
 .rings-legend i {
-  width: 8px; height: 8px;
-  border: 1px solid var(--muted);
+  /* the same stamp the cells are, so the key and the field read alike */
   display: inline-block;
-  transition: background var(--mid) var(--soft), border-color var(--mid) var(--soft);
+  min-width: 18px;
+  height: 16px;
+  border: 1px solid color-mix(in srgb, var(--muted) 55%, transparent);
+  border-radius: 2px;
+  font: normal 400 9.5px/14px var(--serif);
+  letter-spacing: 0;
+  text-align: center;
+  color: var(--muted);
+  transition: background var(--mid) var(--soft), border-color var(--mid) var(--soft), color var(--mid) var(--soft);
 }
-/* the keys carry the same four marks the cells do */
-.rings-legend i.shi { border-radius: 2px; border-style: dashed; }
-.rings-legend i.yin { border-radius: 999px; }
-.rings-legend i.ying { border-radius: 999px; background: var(--muted); }
-.rings-legend span:hover i { border-color: var(--accent); background: var(--accent); }
+.rings-legend span:hover i { border-color: var(--accent); background: var(--accent); color: var(--bg); }
 
 /* ─────────────────────────────────────────────────────────
    page header (section pages)
