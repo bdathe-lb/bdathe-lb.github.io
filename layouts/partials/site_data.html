@@ -51,6 +51,17 @@
       "url" $photosURL) -}}
 {{- end -}}
 
+{{/* 讲稿：标题、页数都从编好的 html 里读，按文件缓存，不必每一页重读一遍 */}}
+{{- $slides := slice -}}
+{{- range hugo.Data.slides -}}
+  {{- $m := partialCached "slide_meta.html" . .file -}}
+  {{- $slides = $slides | append (dict
+      "title" ($m.title | default .date)
+      "pages" $m.slides
+      "date" (string .date)
+      "url" $m.url) -}}
+{{- end -}}
+
 <script>
 window.SITE = {{ dict
   "sections" $sections
@@ -58,5 +69,6 @@ window.SITE = {{ dict
   "poems"    (sort $poems "date" "desc")
   "music"    (sort $music "date" "desc")
   "photos"   (sort $photos "date" "desc")
+  "slides"   (sort $slides "date" "desc")
   | jsonify | safeJS }};
 </script>

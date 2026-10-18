@@ -501,7 +501,7 @@
       {{ else if eq .k "jiang" }}
         {{- $m := partial "slide_meta.html" $x -}}
         {{/* 讲 —— 三页叠着，指上去散开。点进去直接是那一份讲稿。 */}}
-        <a class="stc c-jiang reveal" data-tilt href="{{ $m.url }}">
+        <a class="stc c-jiang reveal" data-tilt href="{{ $m.url }}" target="_blank" rel="noopener">
           <div class="stc-head"><span>讲 · SLIDES</span><i>{{ $c.d }}</i></div>
           <svg class="deck" viewBox="0 0 170 118" aria-hidden="true">
             <path class="sh s3" d="M16 32 H118 V104 H16 Z"/>
@@ -542,6 +542,7 @@
     <span data-kind="shi"><i>诗</i> POEMS</span>
     <span data-kind="yin"><i>音</i> MUSIC</span>
     <span data-kind="ying"><i>影</i> PHOTOS</span>
+    <span data-kind="jiang"><i>讲</i> SLIDES</span>
   </div>
 </section>
 

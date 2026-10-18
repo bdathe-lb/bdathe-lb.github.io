@@ -212,6 +212,15 @@
     (S.photos || []).forEach(function (p) {
       index.push({ k: '影', l: p.title, s: p.caption || '', url: p.url });
     });
+    /* a deck is a full-screen reveal.js page of its own, so it opens beside
+       the site rather than in place of it — same as the link on /slides/ */
+    (S.slides || []).forEach(function (d) {
+      index.push({ k: '讲', l: d.title, s: d.date + (d.pages ? ' · ' + d.pages + ' 页' : ''), url: d.url, blank: true });
+    });
+    var go = function (r) {
+      if (r.blank) window.open(r.url, '_blank', 'noopener');
+      else location.href = r.url;
+    };
 
     var render = function (q) {
       var hit = q
@@ -236,7 +245,7 @@
           sp.textContent = r[cls];
           el.appendChild(sp);
         });
-        el.addEventListener('click', function () { location.href = r.url; });
+        el.addEventListener('click', function () { go(r); });
         el.addEventListener('mousemove', function () { move(i); });
         list.appendChild(el);
         return { el: el, r: r };
@@ -276,7 +285,7 @@
       if (e.key === 'Escape') close();
       if (e.key === 'ArrowDown') { e.preventDefault(); move(sel + 1); }
       if (e.key === 'ArrowUp') { e.preventDefault(); move(sel - 1); }
-      if (e.key === 'Enter' && rows[sel]) location.href = rows[sel].r.url;
+      if (e.key === 'Enter' && rows[sel]) go(rows[sel].r);
     });
   }
 
@@ -308,13 +317,14 @@
     var field = document.getElementById('rings');
     if (!field) return;
     var tip = document.getElementById('tip');
-    var LABEL = { wen: '文', shi: '诗', yin: '音', ying: '影' };
+    var LABEL = { wen: '文', shi: '诗', yin: '音', ying: '影', jiang: '讲' };
 
     var pts = [];
     (S.writing || []).forEach(function (w) { pts.push({ d: w.date, k: 'wen', l: w.title, u: w.url }); });
     (S.poems || []).forEach(function (p) { pts.push({ d: p.date, k: 'shi', l: p.title, u: p.url }); });
     (S.music || []).forEach(function (m) { pts.push({ d: m.date, k: 'yin', l: m.title, u: m.url }); });
     (S.photos || []).forEach(function (p) { pts.push({ d: p.date, k: 'ying', l: p.title, u: p.url }); });
+    (S.slides || []).forEach(function (d) { pts.push({ d: d.date, k: 'jiang', l: d.title, u: d.url, blank: true }); });
     pts = pts.filter(function (p) { return p.d && !isNaN(+new Date(p.d)); });
     if (!pts.length) return;
 
@@ -357,6 +367,7 @@
         cell.className = 'cell';
         cell.dataset.kind = p.k;
         cell.href = p.u;
+        if (p.blank) { cell.target = '_blank'; cell.rel = 'noopener'; }
         cell.style.setProperty('--i', i);
         // the kind is the character itself — four outline shapes asked the
         // reader to learn a legend; 文 / 诗 / 音 / 影 / 讲 read on their own

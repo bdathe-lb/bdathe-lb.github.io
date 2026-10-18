@@ -1,6 +1,19 @@
 {{ define "main" }}
-{{/* 货架是 data/slides.yaml。封面仍从编好的 html 里读 H1 / 大纲 / 页数 ——
-     工房在 ~/projects/reports，这里只展示清单上的那几份。 */}}
+{{/* ═══════════════════════════════════════════════════════════
+     讲 —— 印出来的讲稿
+
+     货架是 data/slides.yaml；标题、大纲、页数从编好的 html 里读
+     （partials/slide_meta.html）。工房在 ~/projects/reports，这里只
+     展示清单上的那几份。
+
+     每一份画成它自己的标题页：16:9 的一张纸，上面是这份讲稿的日期、
+     题目和目录，底下压着的几张是它的厚度。指上去，第一页掀起来一点，
+     露出下面那一页的边。讲稿是一个全屏的 reveal.js 页面，所以在新标签
+     页里打开 —— 讲完关掉，回来还在这里。
+     ═══════════════════════════════════════════════════════════ */}}
+
+{{/* 货架名 → 中文。认不出的照原样显示。 */}}
+{{ $groupName := dict "meetings" "组会" "papers" "读论文" "talks" "报告" }}
 
 {{ $groups := slice }}
 {{ $gname := "" }}
@@ -11,34 +24,8 @@
     {{ $items = slice }}
   {{ end }}
   {{ $gname = $d.group }}
-  {{ $path := printf "static/slides/site/slides/%s" $d.file }}
-  {{ $title := "" }}
-  {{ $outline := slice }}
-  {{ $slides := 0 }}
-  {{ if fileExists $path }}
-    {{ $raw := readFile $path }}
-    {{ $body := "" }}
-    {{ with findRESubmatch `(?s)<textarea data-template>(.*?)</textarea>` $raw 1 }}
-      {{ $body = index (index . 0) 1 }}
-    {{ end }}
-    {{ with $body }}
-      {{ with findRESubmatch `(?m)^#[^#]\s*(.+?)\s*$` . 1 }}
-        {{ $title = index (index . 0) 1 }}
-      {{ end }}
-      {{ range findRESubmatch `(?m)^##[^#]\s*(.+?)\s*$` . }}
-        {{ $part := replaceRE `^Part\s*\d+[.、:：]?\s*` "" (index . 1) }}
-        {{ $outline = $outline | append $part }}
-      {{ end }}
-      {{ $slides = add 1 (len (findRE `(?m)^\s*(---|-v-)\s*$` .)) }}
-    {{ end }}
-  {{ end }}
-  {{ with $d.title }}{{ $title = . }}{{ end }}
-  {{ $items = $items | append (dict
-      "label" $d.date
-      "title" $title
-      "outline" $outline
-      "slides" $slides
-      "url" (printf "/slides/site/slides/%s" $d.file | relURL)) }}
+  {{ $m := partialCached "slide_meta.html" $d $d.file }}
+  {{ $items = $items | append (dict "date" $d.date "m" $m) }}
 {{ end }}
 {{ if $items }}
   {{ $groups = $groups | append (dict "name" $gname "items" $items) }}
@@ -46,38 +33,44 @@
 
 {{ if $groups }}
   {{ range $groups }}
+    {{ $label := index $groupName .name | default (humanize .name) }}
     <section class="deck-group">
       <div class="rule reveal">
-        <h2>{{ humanize .name }}</h2><span class="bar"></span>
-        <span class="rule-note">{{ printf "%02d" (len .items) }} 份讲稿</span>
+        <h2>{{ $label }}</h2><span class="bar"></span>
       </div>
 
       <div class="deck-wall">
         {{ range .items }}
-          {{/* the sheets behind the cover are the deck's own thickness —
-               a two-slide deck should not look like a twenty-slide one */}}
-          {{ $sheets := cond (gt .slides 8) 3 (cond (gt .slides 4) 2 1) }}
-          <a class="deck-cover reveal" data-tilt href="{{ .url }}">
-            <span class="sheets" aria-hidden="true">
+          {{ $m := .m }}
+          {{ $title := $m.title | default (replace .date "-" ".") }}
+          {{/* 底下压几张是这份讲稿真实的厚度，分三档 —— 两页的和二十页的
+               不该一样厚 */}}
+          {{ $sheets := cond (gt $m.slides 12) 3 (cond (gt $m.slides 5) 2 1) }}
+          <a class="deck reveal" href="{{ $m.url }}" target="_blank" rel="noopener"
+             aria-label="打开讲稿《{{ $title }}》（新标签页）">
+            <span class="deck-under" aria-hidden="true">
               {{ range seq $sheets }}<i></i>{{ end }}
             </span>
 
-            <span class="cover-face">
-              <span class="cover-top">
-                <span class="cover-date mono">{{ replace .label "-" "." }}</span>
-                {{ with .slides }}<span class="cover-n mono">{{ . }} 页</span>{{ end }}
+            <span class="deck-page">
+              <span class="dp-head mono">
+                <span>{{ $label }} · {{ replace .date "-" "." }}</span>
+                {{ with $m.slides }}<span>{{ . }} 页</span>{{ end }}
               </span>
 
-              <span class="cover-title">{{ with .title }}{{ . }}{{ else }}{{ replace $.Title "-" "." }}{{ end }}</span>
+              <span class="dp-title">{{ $title }}</span>
+              <span class="dp-rule" aria-hidden="true"></span>
 
-              {{ with .outline }}
-                <span class="cover-outline">
-                  {{ range first 4 . }}<i>{{ . }}</i>{{ end }}
-                  {{ if gt (len .) 4 }}<i class="more">+{{ sub (len .) 4 }}</i>{{ end }}
+              {{ with $m.outline }}
+                <span class="dp-toc">
+                  {{ range $i, $o := first 6 . }}
+                    <i><b class="mono">{{ printf "%02d" (add $i 1) }}</b><span>{{ $o }}</span></i>
+                  {{ end }}
+                  {{ if gt (len .) 6 }}<i class="more"><b class="mono">…</b><span>还有 {{ sub (len .) 6 }} 节</span></i>{{ end }}
                 </span>
               {{ end }}
 
-              <span class="cover-go mono">打开 <b>↗</b></span>
+              <span class="dp-go mono" aria-hidden="true">打开 <b>↗</b></span>
             </span>
           </a>
         {{ end }}

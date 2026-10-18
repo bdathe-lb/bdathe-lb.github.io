@@ -1586,6 +1586,12 @@ img { max-width: 100%; }
 
 /* ─────────────────────────────────────────────────────────
    讲 — slides
+
+   Each deck is drawn as its own title page, printed: a 16:9 sheet of paper
+   (square corners, a hairline, the same soft shadow as the paper on 音 and
+   影) carrying the deck's date, title and contents. The sheets under it are
+   its thickness. On hover the top page lifts and slides aside a little and
+   the next one shows its edge — the way you would thumb a printed deck.
    ───────────────────────────────────────────────────────── */
 
 .deck-group { margin-bottom: 4.5rem; }
@@ -1593,147 +1599,150 @@ img { max-width: 100%; }
 
 .deck-wall {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
-  gap: 1.6rem 1.5rem;
-  margin-top: 1.8rem;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 3rem 3.4rem;
+  margin-top: 2rem;
+  /* room for the sheets that stick out below and to the right */
+  padding: 0 14px 14px 0;
 }
 
-/* A deck is a stack of paper seen from slightly above: the sheets sit behind
-   the cover and are splayed by a couple of degrees, so the card has a
-   thickness before anything moves. How many sheets show is the deck's real
-   slide count bucketed into three — a two-slide deck should not carry the
-   same heft as a twenty-slide one. */
-.deck-cover {
+.deck {
+  --paper: #fffffe;
+  --hair: rgba(27, 36, 48, 0.1);
   position: relative;
   display: block;
-  padding: 0;
-  transform-style: preserve-3d;
-  transition: transform var(--slow) var(--spring);
+  aspect-ratio: 16 / 9;
+  color: var(--ink);
+  text-decoration: none;
 }
 
-.deck-cover .sheets { position: absolute; inset: 0; }
-.deck-cover .sheets i {
+/* the pages under the title page, squared up, each a few px further out */
+.deck-under { position: absolute; inset: 0; }
+.deck-under i {
   position: absolute;
   inset: 0;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface) 70%, #fff);
+  background: var(--paper);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--hair), 0 1px 2px rgba(27, 36, 48, 0.05);
   transition: transform var(--slow) var(--spring);
 }
-.deck-cover .sheets i:nth-child(1) { transform: rotate(1.4deg) translate(4px, 4px); }
-.deck-cover .sheets i:nth-child(2) { transform: rotate(2.8deg) translate(8px, 8px); }
-.deck-cover .sheets i:nth-child(3) { transform: rotate(4.2deg) translate(12px, 12px); }
+.deck-under i:nth-child(1) { transform: translate(5px, 5px); }
+.deck-under i:nth-child(2) { transform: translate(10px, 10px); }
+.deck-under i:nth-child(3) { transform: translate(15px, 15px); }
+.deck-under i:last-child { box-shadow: 0 0 0 1px var(--hair), 0 18px 30px -18px rgba(27, 36, 48, 0.3); }
 
-/* the fan — the whole reason the sheets are separate elements */
-.deck-cover:hover .sheets i:nth-child(1),
-.deck-cover:focus-visible .sheets i:nth-child(1) { transform: rotate(-3.5deg) translate(-9px, 3px); }
-.deck-cover:hover .sheets i:nth-child(2),
-.deck-cover:focus-visible .sheets i:nth-child(2) { transform: rotate(4.5deg) translate(13px, 6px); }
-.deck-cover:hover .sheets i:nth-child(3),
-.deck-cover:focus-visible .sheets i:nth-child(3) { transform: rotate(9deg) translate(24px, 12px); }
+.deck:hover .deck-under i:nth-child(1),
+.deck:focus-visible .deck-under i:nth-child(1) { transform: translate(16px, 6px) rotate(1deg); }
 
-.deck-cover .cover-face {
-  position: relative;
+.deck-page {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-height: 208px;
-  padding: 1.15rem 1.2rem 1.1rem;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(40, 48, 58, 0.03);
-  transition: box-shadow var(--slow) var(--soft), border-color var(--mid) var(--soft),
-              background var(--mid) var(--soft);
+  gap: 0.7rem;
+  padding: 1.3rem 1.6rem 1.15rem;
+  background: var(--paper);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--hair), 0 1px 2px rgba(27, 36, 48, 0.06);
+  transition: transform var(--slow) var(--spring), box-shadow var(--slow) var(--soft);
 }
-.deck-cover:hover .cover-face,
-.deck-cover:focus-visible .cover-face {
-  border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
-  background: #fff;
-  box-shadow: 0 18px 40px -18px rgba(40, 48, 58, 0.22);
+.deck:hover .deck-page,
+.deck:focus-visible .deck-page {
+  transform: translate(-6px, -8px) rotate(-1.2deg);
+  box-shadow: 0 0 0 1px var(--hair), 0 22px 34px -20px rgba(27, 36, 48, 0.34);
 }
+.deck:focus-visible { outline: none; }
+.deck:focus-visible .deck-page { box-shadow: 0 0 0 2px var(--accent), 0 22px 34px -20px rgba(27, 36, 48, 0.34); }
 
-/* the pointer-tracked sheen shared with the home cards */
-.deck-cover .cover-face::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(320px circle at var(--cx, 50%) var(--cy, 50%),
-              var(--accent-soft), transparent 62%);
-  transition: opacity var(--mid) var(--soft);
-}
-.deck-cover:hover .cover-face::after { opacity: 1; }
-
-.deck-cover .cover-top {
+.dp-head {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  font-size: 0.64rem;
-  letter-spacing: 0.12em;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
   color: var(--muted);
 }
-.deck-cover .cover-date { color: var(--accent); }
-.deck-cover .cover-n { opacity: 0.75; }
+.dp-head span:first-child { color: var(--accent); }
 
-.deck-cover .cover-title {
+/* the title of the deck, set the way a title slide sets it — with a short
+   rule under it, the one mark the slide template makes. The rule is its own
+   element: inside the clamped title it would count as a third line. */
+.dp-title {
   font-family: var(--serif);
-  font-size: 1.06rem;
-  line-height: 1.55;
+  font-size: 1.32rem;
+  line-height: 1.45;
   letter-spacing: 0.02em;
-  /* deck titles run from two words to a full paper title — cap it rather
-     than let one card set the height of its whole row */
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   transition: color var(--mid) var(--soft);
 }
-.deck-cover:hover .cover-title { color: var(--accent-deep); }
+.dp-rule {
+  display: block;
+  width: 28px;
+  height: 2px;
+  margin-top: -0.15rem;
+  background: var(--accent);
+  opacity: 0.7;
+}
+.deck:hover .dp-title { color: var(--accent-deep); }
 
-.deck-cover .cover-outline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.32rem;
+/* contents, numbered, two columns */
+.dp-toc {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.28rem 1.4rem;
   margin-top: auto;
 }
-.deck-cover .cover-outline i {
+.dp-toc i {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
   font-style: normal;
-  font-family: var(--sans);
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   line-height: 1.5;
   color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 1px 8px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: border-color var(--mid) var(--soft), color var(--mid) var(--soft);
 }
-.deck-cover:hover .cover-outline i { border-color: color-mix(in srgb, var(--accent) 22%, var(--line)); }
-.deck-cover .cover-outline i.more { color: var(--accent); border-style: dashed; }
+.dp-toc i span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dp-toc b {
+  flex: none;
+  font-weight: 400;
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--accent) 70%, var(--muted));
+}
+.dp-toc i.more { color: var(--accent); }
 
-.deck-cover .cover-go {
+.dp-go {
+  position: absolute;
+  right: 1.6rem;
+  bottom: 1.15rem;
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   letter-spacing: 0.14em;
-  color: var(--muted);
-  transition: color var(--mid) var(--soft);
+  color: var(--accent);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--mid) var(--soft), transform var(--mid) var(--out);
 }
-.deck-cover .cover-go b { transition: transform var(--mid) var(--spring); }
-.deck-cover:hover .cover-go { color: var(--accent); }
-.deck-cover:hover .cover-go b { transform: translate(3px, -3px); }
+.deck:hover .dp-go,
+.deck:focus-visible .dp-go { opacity: 1; transform: none; }
+/* while the button is showing, the last row of contents makes way for it */
+.dp-toc { padding-right: 0; transition: padding var(--mid) var(--soft); }
+.deck:hover .dp-toc, .deck:focus-visible .dp-toc { padding-right: 4.2rem; }
+
+@media (max-width: 600px) {
+  .deck-wall { grid-template-columns: minmax(0, 1fr); }
+  .deck { aspect-ratio: auto; min-height: 200px; }
+  .dp-toc { grid-template-columns: minmax(0, 1fr); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .deck-cover, .deck-cover .sheets i, .deck-cover .cover-go b { transition: none; }
-  .deck-cover:hover .sheets i { transform: none; }
+  .deck-page, .deck-under i, .dp-go { transition: none; }
 }
 
 /* ─────────────────────────────────────────────────────────
