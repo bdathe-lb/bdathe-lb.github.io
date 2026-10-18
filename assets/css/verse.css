@@ -21,6 +21,11 @@
 
    Colour stays on the site tokens; the only thing each 笺 owns is
    --tint / --edge, both inside --surface ±2%.
+
+   Drawn with the home-page desk's pen: no drop shadows. A sheet is paper
+   with a line of ink round it, and a sheet lifted off the heap says so by
+   rising and inking its edge, not by throwing a softer shadow. The 罗纹 and
+   the 文武边 were lines already and stay as they are.
    ═══════════════════════════════════════════════════════════ */
 
 :root {
@@ -28,12 +33,49 @@
      any wider and the block sits in a lake of margin */
   --pitch: 50px;
   --sheet: 468px;
+  --pen: color-mix(in srgb, var(--ink) 58%, transparent);
+  --pen-soft: color-mix(in srgb, var(--ink) 24%, transparent);
 }
 
 .jian-desk { margin: 0 0 4rem; padding-top: 2.6rem; }
 .jian-desk .rule { margin-bottom: 1.6rem; }
 
-.jian-heap { position: relative; height: var(--heap-h, 430px); }
+/* 一张长案. All the 笺 lie in one row, oldest to newest left to right.
+   --step is how far apart they lie: capped at 188px so neighbours still
+   overlap like a heap rather than standing apart like tiles, and below the
+   cap when a few sheets have the whole width to share. Five fit; past that
+   the heap is as wide as its sheets need and the scroller around it runs
+   off to the left. --n / --span (sheets, and gaps between them) come from
+   the template. */
+.jian-scroll {
+  /* rtl so the scroller opens at its right-hand end — the newest — with
+     no script; the desk inside is ltr again */
+  direction: rtl;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* room above for a sheet lifted on hover, without moving the desk */
+  padding-top: 16px;
+  margin-top: -16px;
+  scrollbar-width: none;
+}
+.jian-scroll::-webkit-scrollbar { display: none; }
+/* "there is more this way": the far end fades into the paper until you
+   reach it */
+.jian-scroll.long:not(.at-start) {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 84px);
+          mask-image: linear-gradient(to right, transparent 0, #000 84px);
+}
+.jian-scroll.long { cursor: grab; }
+.jian-scroll.dragging { cursor: grabbing; user-select: none; }
+.jian-scroll.dragging .jian { pointer-events: none; }
+
+.jian-heap {
+  direction: ltr;
+  position: relative;
+  --step: min(188px, calc((100% - 230px) / var(--span, 1)));
+  height: 430px;
+}
+.jian-scroll.long .jian-heap { width: calc(var(--span) * 188px + 250px); }
 
 /* ─────────────────────────────────────────────────────────
    笺
@@ -51,11 +93,8 @@
   /* 罗纹 on the line pitch, so every 句 sits in its own laid band instead of
      beating against one */
   background-image: repeating-linear-gradient(0deg, transparent 0 calc(var(--pitch) - 1px), rgba(27, 36, 48, 0.028) calc(var(--pitch) - 1px) var(--pitch));
-  border: 1px solid var(--edge, #e2e6eb);
-  box-shadow:
-    0 30px 52px -30px rgba(27, 36, 48, 0.36),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  transition: box-shadow var(--slow) var(--soft);
+  border: 1.2px solid var(--pen-soft);
+  transition: border-color var(--slow) var(--soft);
 }
 
 /* 题签 — pasted on the left edge, over the 版框, one shade whiter than the
@@ -74,8 +113,7 @@
   letter-spacing: 0.16em;
   color: var(--ink);
   background: var(--bg);
-  border: 1px solid var(--edge, #e2e6eb);
-  box-shadow: 2px 3px 8px -4px rgba(27, 36, 48, 0.34);
+  border: 1px solid var(--pen);
 }
 
 /* 文武边 — outer heavy, inner hairline, breathing space between.
@@ -165,10 +203,10 @@
 :root.jian-live .jian.is-read .jline {
   opacity: 0;
   transform: translateY(10px);
-  transition: opacity 420ms var(--soft), transform 420ms var(--soft);
+  transition: opacity 340ms var(--soft), transform 340ms var(--soft);
   /* a running 32ms per 句, plus one held beat where 上阙 becomes 下阙 —
      a brush pauses when it changes stanza, it does not pause on a schedule */
-  transition-delay: calc(var(--k, 0) * 32ms + var(--g, 0) * 90ms);
+  transition-delay: calc(var(--k, 0) * 24ms + var(--g, 0) * 70ms);
 }
 :root.jian-live .jian.is-read.ink .jline { opacity: 1; transform: none; }
 
@@ -207,7 +245,7 @@
   color: var(--muted);
   cursor: pointer;
   background: var(--bg);
-  border: 1px solid var(--edge, #e2e6eb);
+  border: 1px solid var(--pen-soft);
   border-left: 0;
   border-radius: 0 3px 3px 0;
   transition: color var(--mid) var(--soft), transform var(--mid) var(--spring);
@@ -242,13 +280,13 @@
   position: absolute;
   top: 0;
   left: 100%;
-  /* 3.5rem clears the tab, then the sheet, then room for its shadow */
+  /* 3.5rem clears the tab, then the sheet, then a little air */
   width: calc(3.5rem + 360px + 24px);
   pointer-events: none;
   z-index: 2;
 }
 /* no height: the clip box takes the sheet's own, so a long 今译 is never cut
-   off. padding-bottom leaves the shadow somewhere to fall. */
+   off. padding-bottom keeps its lower edge clear of the clip. */
 .sub-clip { overflow: hidden; padding-bottom: 30px; }
 
 .sub-sheet {
@@ -256,8 +294,7 @@
   margin-left: 3.5rem;
   padding: 1.4rem 1.6rem 1.6rem;
   background: color-mix(in srgb, var(--surface) 55%, var(--bg));
-  border: 1px solid var(--line);
-  box-shadow: 0 22px 40px -26px rgba(27, 36, 48, 0.34);
+  border: 1px solid var(--pen-soft);
   pointer-events: auto;
   /* parked entirely behind the 笺 — its right edge sits on the clip edge */
   transform: translateX(calc(-100% - 3.5rem));
@@ -296,8 +333,8 @@
    heap tightens as the window narrows instead of running off the edge */
 .jian.is-filed {
   position: absolute;
-  left: var(--x, 0);
-  top: var(--y, 0);
+  left: calc(10px + var(--k, 0) * var(--step) + var(--dx, 0px));
+  top: var(--dy, 0px);
   width: 208px;
   height: 290px;
   transform: rotate(var(--r, 0deg));
@@ -346,12 +383,12 @@
   gap: 0.7rem;
   padding: 26px 18px 16px 26px;
   background-image: repeating-linear-gradient(0deg, transparent 0 33px, rgba(27, 36, 48, 0.035) 33px 34px);
-  box-shadow: -6px 16px 28px -18px rgba(27, 36, 48, 0.42);
-  transition: box-shadow var(--slow) var(--soft);
+  border: 1.3px solid var(--pen);
+  transition: border-color var(--slow) var(--soft);
 }
 .jian.is-filed:hover .jian-paper,
 .jian.is-filed:focus-within .jian-paper {
-  box-shadow: -10px 30px 46px -22px rgba(27, 36, 48, 0.46);
+  border-color: var(--ink);
 }
 
 /* the 题签 shrinks but stays: it is how you know which 笺 you are reaching
@@ -362,7 +399,6 @@
   padding: 11px 5px;
   font-size: 0.7rem;
   letter-spacing: 0.14em;
-  box-shadow: 2px 2px 6px -3px rgba(27, 36, 48, 0.34);
 }
 
 .jian.is-filed .jian-frame,
@@ -372,23 +408,39 @@
 
 .jian-ex, .jian-by { display: none; }
 
+/* 封面竖排：名句从右往左写下来，作者落款在左下，和左上的题签同一边 ——
+   一张笺躺在案上，本来就是这样被读的。首页「近作」里那张笺也是竖排。
+
+   右边留得宽：散着的笺层级从左往右升，每张笺的右缘会被右边那张压住
+   一截，竖排的第一列正好在那里。42px 让开它。 */
 .jian.is-filed .jian-ex {
   display: block;
-  position: relative;
-  margin-top: 0.4rem;
+  position: absolute;
+  top: 30px;
+  right: 42px;
+  height: 214px;
+  max-width: 140px;
+  overflow: hidden;
+  writing-mode: vertical-rl;
   font-family: var(--serif);
-  font-size: 0.94rem;
-  line-height: 1.95;
-  letter-spacing: 0.05em;
+  font-size: 0.98rem;
+  line-height: 2.05;
+  letter-spacing: 0.14em;
   color: var(--ink);
-  text-wrap: pretty;
   transition: color var(--mid) var(--soft);
 }
+/* one 句 per column; columns read right to left */
+.jian.is-filed .jian-ex > span { display: block; }
 .jian.is-filed .jian-by {
   display: block;
-  position: relative;
-  font-size: 0.54rem;
-  letter-spacing: 0.14em;
+  position: absolute;
+  left: 18px;
+  bottom: 16px;
+  writing-mode: vertical-rl;
+  font-family: var(--serif);
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  color: var(--muted);
   transition: color var(--mid) var(--soft);
 }
 .jian.is-filed:hover .jian-ex,
@@ -423,7 +475,10 @@
   display: none;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 4rem 2rem 6rem;
+  /* the reading layer lives inside <main>, so for all its z-index it still
+     paints under the sticky nav — start the sheet below the nav instead of
+     tucking its top edge behind it */
+  padding: 6.5rem 2rem 6rem;
 }
 .jian-lb.on { display: flex; align-items: flex-start; justify-content: center; }
 
@@ -432,12 +487,11 @@
   inset: 0;
   z-index: -1;
   background: color-mix(in srgb, var(--bg) 97%, transparent);
-  view-transition-name: jian-veil;
 }
 
 .jian-close {
   position: fixed;
-  top: 1.6rem;
+  top: 5.6rem;
   right: 1.8rem;
   z-index: 4;
   appearance: none;
@@ -451,7 +505,6 @@
   color: var(--muted);
   font-size: 0.78rem;
   cursor: pointer;
-  view-transition-name: jian-x;
   transition: color var(--fast) var(--soft), border-color var(--fast) var(--soft),
               transform var(--fast) var(--spring);
 }
@@ -475,63 +528,44 @@
 }
 
 /* ─────────────────────────────────────────────────────────
-   开笺 — the flight
+   拿起 / 铺开 / 收起 / 放回
 
-   main.css dresses every view transition as a NAVIGATION: the root
-   snapshot fades out and the new one rises 8px. Right between pages, wrong
-   here — nothing navigated, one sheet was picked up. So verse.js marks the
-   document while the flight runs, and for that moment the root is held
-   perfectly still and only the named things move: the 笺 itself, morphing
-   between its spot in the heap and the reading frame, and the wash.
+   Four beats, each a class verse.js puts on and takes off, each on
+   transform and opacity only — nothing here makes the browser lay out or
+   paint, so the compositor runs it at whatever rate the screen has.
 
-   plus-lighter is the browser's default blend for the cross-fade, and on
-   paper this pale it blows the midpoint out to white — so it blends
-   normally instead.
+     .lifting  the slip on the desk lifts a little and fades      140ms
+     .rising   the wash comes up; the sheet rises into place      300ms
+     .sinking  the sheet settles a little and fades, wash goes    180ms
+     .landing  the slip fades back in where it lay                220ms
+
+   Rise uses `translate`, not `transform`, so it composes with the slide
+   the reading group makes when the 今译 is drawn out.
    ───────────────────────────────────────────────────────── */
 
-@media (prefers-reduced-motion: no-preference) {
-  :root.jian-swap::view-transition-group(*) {
-    animation-duration: 520ms;
-    animation-timing-function: var(--out);
-  }
-  /* Putting a sheet back is not the same act as picking one up. Lifting is
-     deliberate and decelerates into place; returning is brisker and just
-     settles. Same asymmetry the 副笺 and the /vinyl/ lid already carry. */
-  :root.jian-swap.jian-back::view-transition-group(*) {
-    animation-duration: 400ms;
-    animation-timing-function: var(--soft);
-  }
-
-  /* plus-lighter is the default blend for the cross-fade, and on paper this
-     pale it blows the midpoint out to white */
-  :root.jian-swap::view-transition-old(*),
-  :root.jian-swap::view-transition-new(*) { mix-blend-mode: normal; }
-
-  /* The two faces are NOT a cross-fade at the group's speed. The heap face
-     goes early, and the read face — 版框, 题头, and an empty writing area —
-     draws itself in over the second half, so what lands is a blank sheet and
-     the 词 is written on afterwards. Left at the browser's default the
-     contents swapped in the first 250ms while the box was still growing, and
-     the whole "paper first, ink second" beat was lost inside the flight. */
-  :root.jian-swap::view-transition-old(jian-open) { animation: fadeOut 200ms var(--soft) both; }
-  :root.jian-swap::view-transition-new(jian-open) { animation: fadeIn 360ms var(--soft) 170ms both; }
-  :root.jian-swap.jian-back::view-transition-old(jian-open) { animation: fadeOut 180ms var(--soft) both; }
-  :root.jian-swap.jian-back::view-transition-new(jian-open) { animation: fadeIn 260ms var(--soft) 130ms both; }
-
-  /* the wash and the ✕ are not paper — both should be there before the sheet
-     arrives and gone before it lands back */
-  :root.jian-swap::view-transition-old(jian-veil),
-  :root.jian-swap::view-transition-new(jian-veil),
-  :root.jian-swap::view-transition-old(jian-x),
-  :root.jian-swap::view-transition-new(jian-x) { animation-duration: 300ms; }
-
-  :root.jian-swap::view-transition-old(root),
-  :root.jian-swap::view-transition-new(root) {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
+.jian.is-filed.lifting,
+.jian.is-filed.lifting:hover {
+  opacity: 0;
+  transform: rotate(calc(var(--r, 0deg) * 0.25)) translateY(-18px) scale(1.02);
+  transition: transform 140ms var(--out), opacity 140ms var(--soft);
+  z-index: 40;
 }
+
+@keyframes lbWash { from { opacity: 0; } }
+@keyframes lbRise { from { opacity: 0; translate: 0 22px; } }
+@keyframes lbSink { to { opacity: 0; translate: 0 10px; } }
+@keyframes lbGone { to { opacity: 0; } }
+@keyframes jianLand { from { opacity: 0; translate: 0 -12px; } }
+
+.jian-lb.rising .jian-veil,
+.jian-lb.rising .jian-close { animation: lbWash 240ms var(--soft) both; }
+.jian-lb.rising .jread-group { animation: lbRise 300ms var(--out) both; }
+
+.jian-lb.sinking .jian-veil,
+.jian-lb.sinking .jian-close { animation: lbGone 180ms var(--soft) both; }
+.jian-lb.sinking .jread-group { animation: lbSink 180ms var(--soft) both; }
+
+.jian.is-filed.landing { animation: jianLand 220ms var(--out) both; }
 
 /* ─────────────────────────────────────────────────────────
    窄屏
@@ -560,9 +594,9 @@
   .jian.is-filed:hover,
   .jian.is-filed:focus-within { transform: rotate(0deg) translateY(-6px); }
   .jian.is-filed .jian-paper { padding: 22px 14px 14px 22px; }
-  .jian.is-filed .jian-ex { font-size: 0.88rem; line-height: 1.85; }
+  .jian.is-filed .jian-ex { top: 24px; right: 22px; height: 168px; font-size: 0.9rem; line-height: 1.9; }
 
-  .jian-lb { padding: 3.2rem 1rem 4rem; }
+  .jian-lb { padding: 5rem 1rem 4rem; }
   .jian-close { top: 1rem; right: 1rem; }
   .jread-group { width: 100%; max-width: 468px; }
   /* nowhere to slide to, and no need: the note opens under the 词 */
@@ -614,6 +648,14 @@
     transform: none;
     transition: none;
   }
+}
+
+/* on a phone the long desk is a grid like before: no sideways scroll, no
+   fade, and newest first because that is the DOM order */
+@media (max-width: 900px) {
+  .jian-scroll { direction: ltr; overflow: visible; padding-top: 0; margin-top: 0; cursor: auto; }
+  .jian-scroll.long:not(.at-start) { -webkit-mask-image: none; mask-image: none; }
+  .jian-scroll.long .jian-heap { width: auto; }
 }
 
 @media (max-width: 560px) {

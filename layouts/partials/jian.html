@@ -3,7 +3,10 @@
      .p      a row out of data/poems.yaml
      .stock  motif key → paper colours
      .state  "read" | "filed"
-     .x .y .r .z   where it lies in the heap (filed only)
+     .place  where it lies in the heap, as CSS custom properties (filed only;
+             verse/list.html works them out — loose on the desk, or hidden
+             behind a column of the 目录笺)
+     .extra  any further class, e.g. "in-index"
 
      Both faces ship in every copy — verse.css shows one and hides the
      other — so opening a 笺 is a move, not a re-render, and a view
@@ -23,12 +26,10 @@
 
 {{ $style := printf "--tint:%s; --edge:%s" $ink.tint $ink.edge }}
 {{ if eq $state "filed" }}
-  {{/* --i is the order the sheets settle onto the desk on arrival */}}
-  {{ $style = printf "%s; --x:%s; --y:%dpx; --r:%s; --z:%d; --i:%d"
-      $style .x .y .r .z (.i | default 0) }}
+  {{ with .place }}{{ $style = printf "%s; %s" $style . }}{{ end }}
 {{ end }}
 
-<article class="jian {{ if eq $state "read" }}is-read{{ else }}is-filed{{ end }}"
+<article class="jian {{ if eq $state "read" }}is-read{{ else }}is-filed{{ end }}{{ with .extra }} {{ . }}{{ end }}"
          role="listitem"
          id="jian-{{ $p.slug }}"
          data-slug="{{ $p.slug }}"
@@ -137,8 +138,14 @@
          the ordinary index — verse.js takes the click and opens the sheet
          instead, but with no script the paper is still a way through rather
          than a picture of one. */}}
-    <span class="jian-ex" aria-hidden="true">{{ $p.excerpt | default $p.title }}</span>
-    <span class="jian-by mono" aria-hidden="true">{{ $p.author }}{{ with $p.dynasty }} · {{ . }}{{ end }}</span>
+    {{/* 封面竖排，一句一列：和读的那一面一样，句读交给换列，逗号句号不再
+         印第二遍；？！留着，那是语气。落款里括号的注（"南北宋之交"）留给
+         读的那一面，竖着写在封面角上太长。 */}}
+    {{ $ex := $p.excerpt | default $p.title }}
+    {{ range slice "。" "，" "、" "；" "：" }}{{ $ex = replace $ex . "¤" }}{{ end }}
+    {{ $ex = replace (replace $ex "？" "？¤") "！" "！¤" }}
+    <span class="jian-ex" aria-hidden="true">{{ range split $ex "¤" }}{{ with . }}<span>{{ . }}</span>{{ end }}{{ end }}</span>
+    <span class="jian-by" aria-hidden="true">{{ $p.author }}{{ with $p.dynasty }} · {{ replaceRE `（.*?）|\(.*?\)` "" . }}{{ end }}</span>
     <a class="jian-grab" href="{{ printf "/poems/#%s" $p.slug | relURL }}"><span class="visually-hidden">读《{{ $p.title }}》</span></a>
   </div>
 

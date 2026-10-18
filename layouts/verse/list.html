@@ -3,9 +3,9 @@
      诗 · 笺
 
      A heap of 笺 left on the desk. Nothing is open until you open it:
-     the five sheets lie scattered and overlapping, each with its 词牌
-     on a 题签 and its 名句 showing, and picking one lifts it off the
-     pile onto a cleared desk to be read.
+     the newest few lie scattered and overlapping, each with its 词牌 on
+     a 题签 and its 名句 showing; the rest are written into a 目录 sheet at
+     the side. Picking one lifts it off the desk to be read.
 
      Both faces of every 笺 ship in the markup (partials/jian.html), so
      opening one is that element being MOVED from the heap into the
@@ -32,36 +32,43 @@
    "liu"  (dict "tint" "#f6f9f8" "edge" "#dfe7e4")
 }}
 
-{{/* Where each sheet lies. Hand-placed rather than generated: paper does
-     fall at random, but a heap you are meant to read has to keep every
-     名句 legible and every sheet reachable, and random gets that wrong
-     about a third of the time. x is a percentage so the heap tightens as
-     the window narrows instead of running off the edge; five spots, then
-     it wraps to a second row. */}}
-{{ $spots := slice
-   (dict "x" "1%"  "y" 78 "r" "-6.5deg" "z" 3)
-   (dict "x" "19%" "y" 18 "r" "3.2deg"  "z" 5)
-   (dict "x" "38%" "y" 106 "r" "-2.4deg" "z" 2)
-   (dict "x" "56%" "y" 34 "r" "7.1deg"  "z" 4)
-   (dict "x" "74%" "y" 98 "r" "-4.8deg" "z" 1)
-}}
-{{ $rows := int (math.Ceil (div (float $n) 5)) }}
+{{/* ── 一张长案 ─────────────────────────────────────────────
+     所有的词都是同样的笺，散在同一张案上，从左往右由旧到新，最新的那张
+     压在最上面。案上放得下五张；再多，案子往左长出去，横着滚动或拖动，
+     左缘淡出，说明那边还有。一打开就停在最新的那一端 —— 滚动框是
+     direction: rtl（案子本身仍是 ltr），所以不用脚本，起点天然在右边。
+
+     为什么最新的在右边、压在最上面：题签贴在每张笺的左边缘，所以一张笺
+     必须压在它左边那张上面，题签才露得出来，层级只能从左往右升。
+
+     错落从各自的 slug 算出来：同一首词每次构建都落在同一个地方，不同的
+     词各有各的歪法，词再多也不会排出重复的一行。
+
+     以前这里是「最新三张 + 一摞 / 目录笺」：两样东西，画法和动作都不一样，
+     看上去是拼起来的。现在只有一样。 */}}
+{{ $long := gt $n 5 }}
 
 <section class="jian-desk" id="jianDesk">
   <div class="rule">
     <h2>案上</h2><span class="bar"></span>
   </div>
 
-  {{/* a custom property, not `height` — an inline height would beat the
-       narrow-screen rule that lets the heap lie in a grid instead */}}
-  <div class="jian-heap" id="jianHeap" role="list" style="--heap-h: {{ mul $rows 430 }}px">
-    {{ range $i, $p := $poems }}
-      {{ $spot := index $spots (mod $i 5) }}
-      {{ $wrap := div $i 5 }}
-      {{ partial "jian.html" (dict
-          "p" $p "stock" $stock "state" "filed" "i" $i
-          "x" $spot.x "y" (add $spot.y (mul $wrap 396)) "r" $spot.r "z" $spot.z) }}
-    {{ end }}
+  <div class="jian-scroll{{ if $long }} long{{ end }}" id="jianScroll">
+    {{/* custom properties, not `height` — an inline height would beat the
+         narrow-screen rule that lets the heap lie in a grid instead */}}
+    <div class="jian-heap" id="jianHeap" role="list" style="--n:{{ $n }}; --span:{{ cond (gt $n 1) (sub $n 1) 1 }}">
+      {{/* $poems 是新的在前；排位 k 从左往右是从旧到新 */}}
+      {{ range $i, $p := $poems }}
+        {{ $k := sub (sub $n 1) $i }}
+        {{ $h := hash.FNV32a $p.slug }}
+        {{ $dy := add 22 (mod $h 76) }}
+        {{ $dx := sub (mod (div $h 131) 25) 12 }}
+        {{ $r := mul 1.1 (sub (mod (div $h 977) 13) 6) }}
+        {{ partial "jian.html" (dict
+            "p" $p "stock" $stock "state" "filed"
+            "place" (printf "--k:%d; --dx:%dpx; --dy:%dpx; --r:%.1fdeg; --z:%d; --i:%d" $k $dx $dy $r (add 1 $k) $k)) }}
+      {{ end }}
+    </div>
   </div>
 </section>
 

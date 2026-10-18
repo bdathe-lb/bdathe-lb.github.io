@@ -1,28 +1,32 @@
 /* ═══════════════════════════════════════════════════════════
    诗 · 笺 — 拿起来读
 
-   The page is a heap of 笺 on a desk. Each one carries both of its faces
-   in the markup (see verse.css), so opening one is not a render: it is
-   that element being moved out of the heap and into the reading frame,
-   and changing which face it shows.
+   The page is one long desk of 笺. Each one carries both of its faces in
+   the markup (see verse.css), so opening one is not a render: it is that
+   element being moved out of the heap and into the reading frame, and
+   changing which face it shows.
 
-   That is precisely the shape a same-document view transition wants.
-   Naming the sheet for the length of the flight makes the browser tween
-   it between its two boxes, so a 208×290 slip lying at an angle in the
-   corner of the desk becomes a full 笺 squared up in the middle of the
-   screen. No flyer, no cloned node, no measuring: the two states are
-   true DOM and the browser interpolates.
+   How it moves. This used to be a same-document view transition that
+   morphed the slip on the desk into the sheet in the frame. The two faces
+   share nothing — a 208×290 slip, 竖排 and leaning, against a 468-wide
+   sheet set 横排 and square — so the browser could only stretch one
+   screenshot into the other and cross-fade them, and every open began with
+   a whole-page snapshot that held the page still for a frame or two. It
+   read as a stutter, not a gesture.
 
-   Then the writing. The new state is captured with .ink off, so the
-   sheet arrives blank; the class goes on afterwards and the 句 come in
-   one line at a time. Paper first, ink second — which is the order it
-   actually happens in.
+   So now it is two plain moves, both on transform and opacity only:
+     拿起 — the slip lifts a little off the desk and fades;
+     铺开 — the paper wash comes up, and the sheet rises into place.
+   Putting it down is the same in reverse, a little quicker. Then the
+   writing: the sheet arrives blank and the 句 come in one line at a time.
+   Paper first, ink second — the order it actually happens in.
    ═══════════════════════════════════════════════════════════ */
 
 (function () {
-  var heap  = document.getElementById('jianHeap');
-  var lb    = document.getElementById('jianLb');
-  var frame = document.getElementById('jianOpen');
+  var heap   = document.getElementById('jianHeap');
+  var scroll = document.getElementById('jianScroll');
+  var lb     = document.getElementById('jianLb');
+  var frame  = document.getElementById('jianOpen');
   if (!heap || !lb || !frame) return;
 
   var sheets = Array.prototype.slice.call(heap.querySelectorAll('.jian'));
@@ -37,13 +41,37 @@
   root.classList.add('jian-live');
   try { localStorage.removeItem('verse-mode'); } catch (e) {}
 
-  /* The sheets fall onto the desk once, on arrival. The class has to come off
-     afterwards: a 笺 flying back from the reading frame re-matches .is-filed,
-     and with the rule still live it would replay the whole drop instead of
-     simply landing where it came from. */
+  /* The sheets fall onto the desk once, on arrival. The class has to come
+     off afterwards, or a 笺 put back on the desk would replay the drop. */
   heap.classList.add('settling');
-  setTimeout(function () { heap.classList.remove('settling'); },
-    heap.querySelectorAll('.jian').length * 60 + 900);
+  setTimeout(function () { heap.classList.remove('settling'); }, sheets.length * 60 + 900);
+
+  /* 字先到. The 文楷 webfont is cut into a few hundred unicode-range subsets
+     and the browser fetches only those it has had to draw. A slip on the
+     desk shows one line of its 词; the reading face shows all of it, and
+     most of those characters have never been drawn — so the first time a
+     词 was opened its subsets arrived mid-animation and the text re-set
+     itself. Asking for them ahead of time (for one sheet the moment the
+     pointer reaches it, for all of them once the page has sat idle) means
+     the ink is there when the paper is. */
+  var warmed = {};
+  var face = (getComputedStyle(root).getPropertyValue('--serif') || '').split(',')[0].trim();
+  function warm(el) {
+    if (!face || !document.fonts || !document.fonts.load) return;
+    var slug = el.dataset.slug;
+    if (!slug || warmed[slug]) return;
+    warmed[slug] = true;
+    document.fonts.load('400 1rem ' + face, el.textContent).catch(function () {});
+  }
+  ['pointerover', 'focusin'].forEach(function (ev) {
+    heap.addEventListener(ev, function (e) {
+      var el = e.target.closest && e.target.closest('.jian');
+      if (el) warm(el);
+    }, { passive: true });
+  });
+  (window.requestIdleCallback || function (f) { setTimeout(f, 1); })(function () {
+    setTimeout(function () { sheets.forEach(warm); }, 2000);
+  });
 
   var live  = document.getElementById('jianLive');
   var close = document.getElementById('jianClose');
@@ -52,42 +80,61 @@
   var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var busy = false;
   var open = null;   // the 笺 currently being read
-  var home = null;   // where in the heap it came back to
+  var home = null;   // where in the heap it goes back to
   var from = null;   // what to give focus back to
 
-  /* One flight, wrapped so open and close are the same three beats: name the
-     sheet, let the browser morph it between the two states, unname it — and
-     only then put the ink on.
-
-     The name goes on BEFORE startViewTransition, which is the whole trick.
-     The old state is snapshotted when that call is made, not when the
-     callback runs, so a name written inside the callback exists only in the
-     new state: the browser then has nothing to morph FROM, drops the old
-     sheet into the root snapshot, and — because the root is deliberately
-     held still here — the sheet you were reading simply blinks out of
-     existence. It has to be named on both sides of the change. */
-  function fly(el, mutate, after, back) {
-    if (still || !document.startViewTransition) {
-      mutate();
-      if (after) after();
-      return;
-    }
-    busy = true;
-    root.classList.add('jian-swap');
-    if (back) root.classList.add('jian-back');
-    el.style.viewTransitionName = 'jian-open';
-
-    var done = function () {
-      el.style.viewTransitionName = '';
-      root.classList.remove('jian-swap', 'jian-back');
-      busy = false;
-      if (after) after();
+  /* ── 长案 ─────────────────────────────────────────────────
+     With more 词 than fit, the desk runs off to the left. The scroller is
+     direction: rtl, so it opens at the newest end with no script at all;
+     here it only learns whether it is at the far end (to drop the fade that
+     says "there is more this way"), and a mouse can drag it. Trackpads and
+     touch scroll it natively. */
+  if (scroll && scroll.classList.contains('long')) {
+    var edge = function () {
+      var max = scroll.scrollWidth - scroll.clientWidth;
+      /* rtl scrollLeft runs from 0 at the right end to −max at the left */
+      scroll.classList.toggle('at-start', scroll.scrollLeft <= -max + 2);
     };
-    document.startViewTransition(mutate).finished.then(done, done);
+    scroll.addEventListener('scroll', edge, { passive: true });
+    addEventListener('resize', edge);
+    edge();
+
+    var drag = null;
+    scroll.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      drag = { x: e.clientX, left: scroll.scrollLeft, moved: false };
+    });
+    addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var d = e.clientX - drag.x;
+      if (!drag.moved && Math.abs(d) < 6) return;
+      drag.moved = true;
+      scroll.classList.add('dragging');
+      scroll.scrollLeft = drag.left - d;
+    });
+    addEventListener('pointerup', function () {
+      if (!drag) return;
+      var moved = drag.moved;
+      drag = null;
+      scroll.classList.remove('dragging');
+      /* a drag that ends on a slip must not also open it */
+      if (moved) {
+        var eat = function (e) { e.preventDefault(); e.stopPropagation(); };
+        scroll.addEventListener('click', eat, { capture: true, once: true });
+        setTimeout(function () { scroll.removeEventListener('click', eat, true); }, 0);
+      }
+    });
+    scroll.addEventListener('dragstart', function (e) { e.preventDefault(); });
   }
 
-  /* The sheet must be painted once with its columns at opacity 0 before the
-     class that moves them off it, or there is nothing to transition from. */
+  /* ── 拿起 / 放下 ──────────────────────────────────────────
+     Every beat is a class and a timer, on transform and opacity only: the
+     compositor can run all of it without a layout or a paint. The lengths
+     live in verse.css; these are just when to move on to the next beat. */
+  var LIFT = 140, RISE = 300, SINK = 180;
+
+  /* the sheet must be painted once with its lines at opacity 0 before the
+     class that brings them in, or there is nothing to transition from */
   function ink(el) {
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { el.classList.add('ink'); });
@@ -101,21 +148,27 @@
        absolutely placed and its DOM order is the poems' order, so putting
        the sheet back in front of whatever followed it restores both */
     home = el.nextElementSibling;
+    heap.classList.remove('settling');
 
-    var mutate = function () {
-      frame.appendChild(el);
-      el.classList.remove('is-filed', 'is-open', 'ink');
+    var into = function () {
+      el.classList.remove('lifting', 'is-filed', 'is-open', 'ink');
       el.classList.add('is-read');
       el.setAttribute('tabindex', '-1');
+      frame.appendChild(el);
+      var tab = el.querySelector('.jian-tab');
+      if (tab) {
+        tab.setAttribute('aria-expanded', 'false');
+        tab.querySelector('span').textContent = '今译';
+      }
       lb.classList.add('on');
       lb.setAttribute('aria-hidden', 'false');
       document.body.classList.add('lb-open');
-      var tab = el.querySelector('.jian-tab');
-      if (tab) tab.setAttribute('aria-expanded', 'false');
       open = el;
     };
 
-    var land = function () {
+    var settled = function () {
+      lb.classList.remove('rising');
+      busy = false;
       ink(el);
       if (close) close.focus({ preventScroll: true });
       if (live) {
@@ -126,30 +179,47 @@
       try { history.replaceState(null, '', '#' + el.dataset.slug); } catch (e) {}
     };
 
-    if (instant) { mutate(); land(); return; }
-    /* a sheet still mid-drop would replay the drop when it comes back */
-    heap.classList.remove('settling');
-    fly(el, mutate, land);
+    if (instant || still) { into(); settled(); return; }
+
+    busy = true;
+    el.classList.add('lifting');               // 拿起
+    setTimeout(function () {
+      lb.classList.add('rising');              // 铺开
+      into();
+      setTimeout(settled, RISE);
+    }, LIFT);
   }
 
   function hide() {
     if (busy || !open) return;
     var el = open;
 
-    fly(el, function () {
+    var back = function () {
       heap.insertBefore(el, home);
       el.classList.remove('is-read', 'is-open', 'ink');
       el.classList.add('is-filed');
       el.removeAttribute('tabindex');
-      lb.classList.remove('on');
+      lb.classList.remove('on', 'sinking');
       lb.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('lb-open');
       open = null;
-    }, function () {
+    };
+    var after = function () {
+      busy = false;
       if (from) from.focus({ preventScroll: true });
       from = null;
       try { history.replaceState(null, '', location.pathname); } catch (e) {}
-    }, true);
+    };
+
+    if (still) { back(); after(); return; }
+
+    busy = true;
+    lb.classList.add('sinking');               // 收起
+    setTimeout(function () {
+      back();
+      el.classList.add('landing');             // 放回案上
+      setTimeout(function () { el.classList.remove('landing'); after(); }, SINK + 40);
+    }, SINK);
   }
 
   /* The hit target is an <a> to /poems/#slug so the page still works without
@@ -180,8 +250,8 @@
     hide();
   });
 
-  /* /poems/#zhe-gu-tian arrives with that 笺 already open. No flight for
-     that one — there is no heap position for the eye to have followed it from. */
+  /* /poems/#zhe-gu-tian arrives with that 笺 already open. No motion for
+     that one — there is no place on the desk the eye followed it from. */
   var want = decodeURIComponent((location.hash || '').slice(1));
   if (want) {
     sheets.forEach(function (el) {
